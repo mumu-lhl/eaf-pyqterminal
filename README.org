@@ -1,0 +1,33 @@
+** EAF PyQterminal
+
+A terminal written in PyQt6 for the [[https://github.com/emacs-eaf/emacs-application-framework][Emacs Application Framework]].
+
+*Note: It doesn't support Windows currently.*
+
+*** Load application
+
+[[https://github.com/emacs-eaf/emacs-application-framework#install][Install EAF]] first, then add below code in your emacs config:
+
+#+begin_src elisp
+  (add-to-list 'load-path "~/.emacs.d/site-lisp/emacs-application-framework/")
+  (require 'eaf)
+  (require 'eaf-pyqterminal)
+#+end_src
+
+*** Dependency List
+
+| Package   | Description       |
+| playsound | play bell sound   |
+| pyte      | terminal emulator |
+
+*** Thanks for them
+
+EAF PyQterminal uses code of these projects:
+
+- [[https://github.com/korimas/PyQTerminal][PyQterminal]]
+- [[https://github.com/emacs-eaf/eaf-terminal][EAF Terminal]]
+- [[https://github.com/Eugeny/tabby][Tabby]] (bell audio)
+
+There will not be this project too if there aren't those contributer:
+
+[[https://contrib.rocks/image?repo=mumu-lhl/eaf-pyqterminal]]

@@ -1,0 +1,16 @@
+{
+  "pip": {
+    "linux": [
+      "playsound",
+      "pyte"
+    ],
+    "win32": [
+      "playsound",
+      "pyte"
+    ],
+    "darwin": [
+      "playsound",
+      "pyte"
+    ]
+  }
+}
