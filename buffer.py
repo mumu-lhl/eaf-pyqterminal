@@ -50,10 +50,6 @@ class AppBuffer(Buffer):
         self.term = widget.QTerminalWidget()
         self.add_widget(self.term)
 
-    @interactive
-    def copy_text(self):
-        pass
-
     @interactive()
     def yank_text(self):
         text = get_emacs_func_result("eaf-pyqterminal-get-clipboard", ())

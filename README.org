@@ -1,3 +1,5 @@
+#+OPTIONS: toc:nil html-postamble
+
 ** EAF PyQterminal
 
 A terminal written in PyQt6 for the [[https://github.com/emacs-eaf/emacs-application-framework][Emacs Application Framework]].
@@ -28,6 +30,6 @@ EAF PyQterminal uses code of these projects:
 - [[https://github.com/emacs-eaf/eaf-terminal][EAF Terminal]]
 - [[https://github.com/Eugeny/tabby][Tabby]] (bell audio)
 
-There will not be this project too if there aren't those contributer:
+There will not be this project if there aren't those contributer:
 
-[[https://contrib.rocks/image?repo=mumu-lhl/eaf-pyqterminal]]
+@@html:<a href="https://github.com/mumu-lhl/eaf-pyqterminal/graphs/contributors">@@@@html:<img src="https://contrib.rocks/image?repo=mumu-lhl/eaf-pyqterminal" />@@@@html:</a>@@
