@@ -29,7 +29,7 @@
   :type 'string
   :group 'eaf-pyqterminal)
 
-(defcustom eaf-pyqterminal-bell-sound-path (concat eaf-pyqterminal-path "bell.wav")
+(defcustom eaf-pyqterminal-bell-sound-path (concat eaf-pyqterminal-path "bell.ogg")
   "Bell sound path of EAF pyqterminal."
   :type 'string
   :group 'eaf-pyqterminal)
