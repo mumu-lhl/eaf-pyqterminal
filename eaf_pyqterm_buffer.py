@@ -32,7 +32,7 @@ from core.utils import get_emacs_func_result
 
 sys.path.append(os.path.dirname(__file__))
 
-import widget
+import eaf_pyqterm_widget as widget
 
 
 class AppBuffer(Buffer):

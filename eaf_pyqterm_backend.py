@@ -28,11 +28,9 @@ import sys
 import termios
 import threading
 
-from pyte.charsets import VT100_MAP
-
 sys.path.append(os.path.dirname(__file__))
 
-import term
+import eaf_pyqterm_term as term
 
 QTerminalScreen = term.QTerminalScreen
 QTerminalStream = term.QTerminalStream

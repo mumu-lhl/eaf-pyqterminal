@@ -19,6 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+import sys
+
 import pyte
 from core.utils import get_emacs_vars
 from PyQt6.QtCore import QRect, Qt
@@ -34,12 +37,10 @@ from PyQt6.QtGui import (
     QWheelEvent,
 )
 from PyQt6.QtWidgets import QWidget
-import os
-import sys
 
 sys.path.append(os.path.dirname(__file__))
 
-import backend
+import eaf_pyqterm_backend as backend
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -199,7 +200,7 @@ class QTerminalWidget(QWidget):
         title = self.backend.get_title()
         if self.title != title:
             self.title = title
-            update_title(title)
+            update_title(title)  # noqa: F821
 
     def paint_selection(self, painter):
         pass

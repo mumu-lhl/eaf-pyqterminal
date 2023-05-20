@@ -92,7 +92,7 @@
  'eaf-app-binding-alist '("pyqterminal" . eaf-pyqterminal-keybinding))
 
 (defvar eaf-pyqterminal-module-path
-  (concat eaf-pyqterminal-path "buffer.py"))
+  (concat eaf-pyqterminal-path "eaf_pyqterm_buffer.py"))
 (add-to-list
  'eaf-app-module-path-alist '("pyqterminal" . eaf-pyqterminal-module-path))
 
