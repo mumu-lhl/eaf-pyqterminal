@@ -68,14 +68,12 @@ class QTerminalWidget(QWidget):
 
     title = ""
 
-    old_cursor = None
-
     def __init__(self):
         super().__init__()
 
-        self.startTimer(50)
+        self.init_vars()
 
-        self.init_var()
+        self.startTimer(self.refresh_ms)
 
         font = self.new_font()
         self.font = font
@@ -95,12 +93,22 @@ class QTerminalWidget(QWidget):
         self.backend = backend.PtyBackend(self._columns, self._rows)
         self.pixmap = QPixmap(self.width(), self.height())
 
-    def init_var(self):
-        (self.font_size, self.font_family, color_schema) = get_emacs_vars(
+    def init_vars(self):
+        (
+            self.font_size,
+            self.font_family,
+            color_schema,
+            self.refresh_ms,
+            self.cursor_type,
+            self.cursor_size,
+        ) = get_emacs_vars(
             (
                 "eaf-pyqterminal-font-size",
                 "eaf-pyqterminal-font-family",
                 "eaf-pyqterminal-color-schema",
+                "eaf-pyqterminal-refresh-ms",
+                "eaf-pyqterminal-cursor-type",
+                "eaf-pyqterminal-cursor-size",
             )
         )
 
@@ -173,8 +181,8 @@ class QTerminalWidget(QWidget):
         return brush
 
     def pixel2pos(self, x, y):
-        col = int(x / self._char_width)
-        row = int(y / self._char_height)
+        col = x // self._char_width
+        row = y // self._char_height
         return col, row
 
     def resizeEvent(self, event):
@@ -316,12 +324,22 @@ class QTerminalWidget(QWidget):
 
         self.cursor_x = cursor.x
         self.cursor_y = cursor.y
+
         screen = self.backend.screen
         line = screen.buffer[cursor.y]
         before_text = "".join(
             [line[char_number].data for char_number in range(cursor.x)]
         )
-        before_text_width = self.get_text_width(before_text)
+
+        cursor_width = self._char_width
+        cursor_height = self._char_height
+        cursor_x = self.get_text_width(before_text)
+        cursor_y = self.cursor_y * self._char_height
+        if self.cursor_type == "bar":
+            cursor_height = self.cursor_size
+            cursor_y += self._char_height - cursor_height
+        elif self.cursor_type == "hbar":
+            cursor_width = self.cursor_size
 
         bcol = QColor(self.cursor_color)
         bcol.setAlpha(80)
@@ -329,14 +347,7 @@ class QTerminalWidget(QWidget):
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(brush)
-        painter.drawRect(
-            QRect(
-                before_text_width,
-                self.cursor_y * self._char_height,
-                self._char_width,
-                self._char_height,
-            )
-        )
+        painter.drawRect(QRect(cursor_x, cursor_y, cursor_width, cursor_height))
 
     def paint_full_pixmap(self):
         painter = QPainter(self.pixmap)

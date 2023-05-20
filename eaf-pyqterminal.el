@@ -14,11 +14,6 @@
   "EAF PyQTerminal."
   :group 'eaf)
 
-(defcustom eaf-pyqterminal-dark-mode "follow"
-  "Dark mode of EAF pyqterminal."
-  :type 'string
-  :group 'eaf-pyqterminal)
-
 (defcustom eaf-pyqterminal-font-size 16
   "Font size of EAF pyqterminal."
   :type 'integer
@@ -32,6 +27,23 @@
 (defcustom eaf-pyqterminal-bell-sound-path (concat eaf-pyqterminal-path "bell.ogg")
   "Bell sound path of EAF pyqterminal."
   :type 'string
+  :group 'eaf-pyqterminal)
+
+(defcustom eaf-pyqterminal-refresh-ms 100
+  "Maybe need to set this variable when you change repeat rate."
+  :type 'integer
+  :group 'eaf-pyqterminal)
+
+(defcustom eaf-pyqterminal-cursor-type "box"
+  "Type of cursor.
+
+You can set this variable to `box', `bar' and `hbar'"
+  :type 'string
+  :group 'eaf-pyqterminal)
+
+(defcustom eaf-pyqterminal-cursor-size 2
+  "Setting cursor size for the cursor type of `bar' or `hbar'."
+  :type 'integer
   :group 'eaf-pyqterminal)
 
 (defcustom eaf-pyqterminal-color-schema
