@@ -101,6 +101,7 @@ class QTerminalWidget(QWidget):
             self.refresh_ms,
             self.cursor_type,
             self.cursor_size,
+            self.cursor_alpha
         ) = get_emacs_vars(
             (
                 "eaf-pyqterminal-font-size",
@@ -109,6 +110,7 @@ class QTerminalWidget(QWidget):
                 "eaf-pyqterminal-refresh-ms",
                 "eaf-pyqterminal-cursor-type",
                 "eaf-pyqterminal-cursor-size",
+                "eaf-pyqterminal-cursor-alpha",
             )
         )
 
@@ -342,7 +344,8 @@ class QTerminalWidget(QWidget):
             cursor_width = self.cursor_size
 
         bcol = QColor(self.cursor_color)
-        bcol.setAlpha(80)
+        if self.cursor_alpha >= 0:
+            bcol.setAlpha(self.cursor_alpha)
         brush = QBrush(bcol)
 
         painter.setPen(Qt.PenStyle.NoPen)

@@ -46,6 +46,13 @@ You can set this variable to `box', `bar' and `hbar'"
   :type 'integer
   :group 'eaf-pyqterminal)
 
+(defcustom eaf-pyqterminal-cursor-alpha -1
+  "Alpha of cursor.
+
+If alpha < 0, don't set alpha for cursor"
+  :type 'integer
+  :group 'eaf-pyqterminal)
+
 (defcustom eaf-pyqterminal-color-schema
   ;; Tango Dark
   '(("background" "#000000")
@@ -53,7 +60,7 @@ You can set this variable to `box', `bar' and `hbar'"
     ("blue" "#3465a4")
     ("brown" "#fce94f")
     ("cyan" "#06989a")
-    ("cursor" "#ffffff")
+    ("cursor" "#eeeeec")
     ("foreground" "#ffffff")
     ("green" "#4e9a06")
     ("magenta" "#75507b")
