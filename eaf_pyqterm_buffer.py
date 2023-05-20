@@ -44,10 +44,9 @@ class AppBuffer(Buffer):
         backend.argv = shlex.split(arguments_dict["command"])
         backend.start_directory = arguments_dict["directory"]
 
-        backend.close_buffer = self.close_buffer
         widget.update_title = self.update_title
 
-        self.term = widget.QTerminalWidget()
+        self.term = widget.QTerminalWidget(self.close_buffer)
         self.add_widget(self.term)
 
     @interactive()

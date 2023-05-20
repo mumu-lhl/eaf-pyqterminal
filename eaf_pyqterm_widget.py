@@ -44,7 +44,7 @@ import eaf_pyqterm_backend as backend
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
-    Qt.Key.Key_AsciiTilde: chr(126),
+    Qt.Key.Key_AsciiTilde: "~",
     Qt.Key.Key_Backspace: pyte.control.DEL,
     Qt.Key.Key_Delete: pyte.control.DEL,
     Qt.Key.Key_Down: CSI_C0 + "B",
@@ -62,36 +62,17 @@ align = Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
 
 
 class QTerminalWidget(QWidget):
-    pens = {}
     brushes = {}
+    colors = {}
     fonts = {}
+    pens = {}
 
-    title = ""
-
-    def __init__(self):
+    def __init__(self, close_buffer):
         super().__init__()
 
         self.init_vars()
-
+        self.backend.close_buffer = close_buffer
         self.startTimer(self.refresh_ms)
-
-        font = self.new_font()
-        self.font = font
-
-        self.fm = QFontMetrics(font)
-        self._char_height = self.fm.height()
-        self._char_width = self.get_text_width("W")
-        self._columns, self._rows = self.pixel2pos(self.width(), self.height())
-
-        self.cursor_x = 0
-        self.cursor_y = 0
-        self._selection = None
-
-        self.default_brush = QBrush(self.colors["background"])
-        self.default_pen = QPen(self.colors["foreground"])
-
-        self.backend = backend.PtyBackend(self._columns, self._rows)
-        self.pixmap = QPixmap(self.width(), self.height())
 
     def init_vars(self):
         (
@@ -101,7 +82,7 @@ class QTerminalWidget(QWidget):
             self.refresh_ms,
             self.cursor_type,
             self.cursor_size,
-            self.cursor_alpha
+            self.cursor_alpha,
         ) = get_emacs_vars(
             (
                 "eaf-pyqterminal-font-size",
@@ -114,13 +95,31 @@ class QTerminalWidget(QWidget):
             )
         )
 
-        self.colors = {}
         for name, color_str in color_schema:
             color = QColor(color_str)
             if name == "cursor":
                 self.cursor_color = color
                 continue
             self.colors[name] = color
+
+        self.pens["default"] = QPen(self.colors["foreground"])
+        self.brushes["default"] = QBrush(self.colors["background"])
+
+        self.title = ""
+
+        self.cursor_x = 0
+        self.cursor_y = 0
+        self._selection = None
+
+        self.font = self.new_font()
+
+        self.fm = QFontMetrics(self.font)
+        self._char_height = self.fm.height()
+        self._char_width = self.get_text_width("W")
+        self._columns, self._rows = self.pixel2pos(self.width(), self.height())
+
+        self.backend = backend.PtyBackend(self._columns, self._rows)
+        self.pixmap = QPixmap(self.width(), self.height())
 
     def new_font(self, style=[]):
         font = QFont()
@@ -129,11 +128,11 @@ class QTerminalWidget(QWidget):
         for s in style:
             if s == "bold":
                 font.setBold(True)
-            if s == "underscore":
+            elif s == "underscore":
                 font.setUnderline(True)
-            if s == "italics":
+            elif s == "italics":
                 font.setItalic(True)
-            if s == "strikethrough":
+            elif s == "strikethrough":
                 font.setStrikeOut(True)
         return font
 
@@ -162,8 +161,6 @@ class QTerminalWidget(QWidget):
             return pen
 
         color = self.get_color(color_name)
-        if color == "default":
-            return self.default_pen
 
         pen = QPen(color)
         self.pens[color_name] = pen
@@ -175,8 +172,6 @@ class QTerminalWidget(QWidget):
             return brush
 
         color = self.get_color(color_name)
-        if color == "default":
-            return self.default_brush
 
         brush = QBrush(color)
         self.brushes[color_name] = brush
@@ -257,7 +252,7 @@ class QTerminalWidget(QWidget):
         screen = self.backend.screen
 
         clear_rect = QRect(start_x, start_y, self.width(), self._char_height)
-        painter.fillRect(clear_rect, self.default_brush)
+        painter.fillRect(clear_rect, self.brushes["default"])
 
         line = screen.buffer[line_num]
 

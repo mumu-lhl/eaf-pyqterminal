@@ -28,6 +28,7 @@ import sys
 import termios
 import threading
 
+
 sys.path.append(os.path.dirname(__file__))
 
 import eaf_pyqterm_term as term
@@ -126,7 +127,7 @@ class PtyBackend(BaseBackend):
             self.p_pid = p_pid
             p_out = os.fdopen(master_fd, "w+b", 0)
             self.p_out = p_out
-            term.p_out = p_out
+            term.send = self.send
 
         self.thread = threading.Thread(target=self.read)
         self.thread.start()
@@ -135,19 +136,21 @@ class PtyBackend(BaseBackend):
         while True:
             try:
                 data = self.p_out.read(65536)
-
                 self.write_to_screen(data)
             except (OSError, IOError):
                 self.close()
                 break
 
     def send(self, data: str):
-        self.p_out.write(data.encode())
+        try:
+            self.p_out.write(data.encode())
+        except:
+            self.close()
 
     def close(self):
         os.kill(self.p_pid, signal.SIGTERM)
         self.p_out.close()
-        close_buffer()  # noqa: F821
+        self.close_buffer()
 
     def resize(self, width, height):
         super().resize(width, height)

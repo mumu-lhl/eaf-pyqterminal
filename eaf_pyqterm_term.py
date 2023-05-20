@@ -48,7 +48,7 @@ class QTerminalScreen(HistoryScreen):
         super().__init__(*args, **kwargs)
 
     def write_process_input(self, data: str) -> None:
-        p_out.write(data.encode())  # noqa: F821
+        send(data)  # noqa: F821
 
     def bell(self):
         thread = BellThread()
