@@ -24,11 +24,7 @@ import os
 import shlex
 import sys
 
-from core.buffer import (
-    Buffer,
-    interactive,
-)
-from core.utils import get_emacs_func_result
+from core.buffer import Buffer
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -44,20 +40,9 @@ class AppBuffer(Buffer):
         backend.argv = shlex.split(arguments_dict["command"])
         backend.start_directory = arguments_dict["directory"]
 
-        widget.update_title = self.update_title
+        term = widget.QTerminalWidget()
+        term.change_title = self.change_title
+        term.backend.close_buffer = self.close_buffer
 
-        self.term = widget.QTerminalWidget(self.close_buffer)
-        self.add_widget(self.term)
-
-    @interactive()
-    def yank_text(self):
-        text = get_emacs_func_result("eaf-pyqterminal-get-clipboard", ())
-        if isinstance(text, str):
-            self.term.send(text)
-
-    @interactive
-    def update_theme(self):
-        super().update_theme()
-
-    def update_title(self, title: str):
-        self.change_title(f"Term [{title}]")
+        self.add_widget(term)
+        self.build_all_methods(term)

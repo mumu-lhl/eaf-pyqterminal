@@ -135,7 +135,7 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
 
 (defun eaf-pyqterminal-get-clipboard ()
   "Get clipboard text."
-  (let* ((source-data (gui-get-selection 'CLIPBOARD)))
+  (let* ((source-data (current-kill 0)))
     (set-text-properties 0 (length source-data) nil source-data)
     source-data))
 

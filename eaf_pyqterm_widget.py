@@ -23,7 +23,8 @@ import os
 import sys
 
 import pyte
-from core.utils import get_emacs_vars
+from core.buffer import interactive
+from core.utils import get_emacs_func_result, get_emacs_vars
 from PyQt6.QtCore import QRect, Qt
 from PyQt6.QtGui import (
     QBrush,
@@ -67,14 +68,9 @@ class QTerminalWidget(QWidget):
     fonts = {}
     pens = {}
 
-    def __init__(self, close_buffer):
+    def __init__(self):
         super().__init__()
 
-        self.init_vars()
-        self.backend.close_buffer = close_buffer
-        self.startTimer(self.refresh_ms)
-
-    def init_vars(self):
         (
             self.font_size,
             self.font_family,
@@ -120,6 +116,8 @@ class QTerminalWidget(QWidget):
 
         self.backend = backend.PtyBackend(self._columns, self._rows)
         self.pixmap = QPixmap(self.width(), self.height())
+
+        self.startTimer(self.refresh_ms)
 
     def new_font(self, style=[]):
         font = QFont()
@@ -190,6 +188,9 @@ class QTerminalWidget(QWidget):
         self.pixmap = QPixmap(width, height)
         self.paint_full_pixmap()
 
+    def update_title(self, title: str):
+        self.change_title(f"Term [{title}]")
+
     def timerEvent(self, event):
         cursor = self.backend.cursor()
         if (
@@ -205,7 +206,7 @@ class QTerminalWidget(QWidget):
         title = self.backend.get_title()
         if self.title != title:
             self.title = title
-            update_title(title)  # noqa: F821
+            self.update_title(title)
 
     def paint_selection(self, painter):
         pass
@@ -404,3 +405,9 @@ class QTerminalWidget(QWidget):
         else:
             self.backend.screen.next_page()
             self.update()
+
+    @interactive
+    def yank_text(self):
+        text = get_emacs_func_result("eaf-pyqterminal-get-clipboard", ())
+        if isinstance(text, str):
+            self.send(text)

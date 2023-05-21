@@ -28,7 +28,6 @@ import sys
 import termios
 import threading
 
-
 sys.path.append(os.path.dirname(__file__))
 
 import eaf_pyqterm_term as term
