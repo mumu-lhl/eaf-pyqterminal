@@ -105,13 +105,14 @@ class QTerminalWidget(QWidget):
 
         self.cursor_x = 0
         self.cursor_y = 0
+
         self._selection = None
 
         self.font = self.new_font()
 
         self.fm = QFontMetrics(self.font)
         self._char_height = self.fm.height()
-        self._char_width = self.get_text_width("W")
+        self._char_width = self.fm.maxWidth()
         self._columns, self._rows = self.pixel2pos(self.width(), self.height())
 
         self.backend = backend.PtyBackend(self._columns, self._rows)
@@ -161,6 +162,7 @@ class QTerminalWidget(QWidget):
         color = self.get_color(color_name)
 
         pen = QPen(color)
+        pen.setWidth(5)
         self.pens[color_name] = pen
         return pen
 
@@ -188,9 +190,6 @@ class QTerminalWidget(QWidget):
         self.pixmap = QPixmap(width, height)
         self.paint_full_pixmap()
 
-    def update_title(self, title: str):
-        self.change_title(f"Term [{title}]")
-
     def timerEvent(self, event):
         cursor = self.backend.cursor()
         if (
@@ -206,7 +205,7 @@ class QTerminalWidget(QWidget):
         title = self.backend.get_title()
         if self.title != title:
             self.title = title
-            self.update_title(title)
+            self.change_title(f"Term [{title}]")
 
     def paint_selection(self, painter):
         pass
@@ -253,66 +252,42 @@ class QTerminalWidget(QWidget):
         screen = self.backend.screen
 
         clear_rect = QRect(start_x, start_y, self.width(), self._char_height)
-        painter.fillRect(clear_rect, self.brushes["default"])
+        painter.fillRect(clear_rect, self.get_brush("default"))
 
         line = screen.buffer[line_num]
 
-        pre_char = None
-        same_text = ""
-        text_width = 0
-
-        for col in range(screen.columns + 1):
+        for col in range(screen.columns):
             char = line[col]
-            if col == screen.columns:
-                char = None
 
-            if (
-                char
-                and pre_char
-                and pre_char.bg == char.bg
-                and pre_char.fg == char.fg
-                and pre_char.reverse == char.reverse
-                and pre_char.bold == char.bold
-                and pre_char.italics == char.italics
-                and pre_char.underscore == char.underscore
-                and pre_char.strikethrough == char.strikethrough
-            ):
-                same_text += char.data
-                continue
-            elif same_text:
-                text_width = self.get_text_width(same_text)
+            text_width = self._char_width
+            start_x += text_width
 
-                fg = "white" if pre_char.fg == "default" else pre_char.fg
-                bg = "black" if pre_char.bg == "default" else pre_char.bg
-                if pre_char.reverse:
-                    fg, bg = bg, fg
+            fg = "white" if char.fg == "default" else char.fg
+            bg = "black" if char.bg == "default" else char.bg
+            if char.reverse:
+                fg, bg = bg, fg
 
-                style = []
-                if pre_char.bold:
-                    style.append("bold")
-                if pre_char.italics:
-                    style.append("italics")
-                if pre_char.underscore:
-                    style.append("underscore")
-                if pre_char.strikethrough:
-                    style.append("strikethrough")
+            style = []
+            if char.bold:
+                style.append("bold")
+            if char.italics:
+                style.append("italics")
+            if char.underscore:
+                style.append("underscore")
+            if char.strikethrough:
+                style.append("strikethrough")
 
-                self.draw_text(
-                    same_text,
-                    start_x,
-                    start_y,
-                    text_width,
-                    fg,
-                    bg,
-                    painter,
-                    align,
-                    style,
-                )
-
-            if char:
-                pre_char = char
-                same_text = char.data
-                start_x = start_x + text_width
+            self.draw_text(
+                char.data,
+                start_x,
+                start_y,
+                text_width,
+                fg,
+                bg,
+                painter,
+                align,
+                style,
+            )
 
     def paint_cursor(self, painter: QPainter):
         cursor = self.backend.cursor()
@@ -324,14 +299,15 @@ class QTerminalWidget(QWidget):
         self.cursor_y = cursor.y
 
         screen = self.backend.screen
-        line = screen.buffer[cursor.y]
-        before_text = "".join(
-            [line[char_number].data for char_number in range(cursor.x)]
-        )
+        line = screen.display[cursor.y]
+        before_text = line[: cursor.x + 1]
+        text_width = 0
+        for char in before_text:
+            text_width += self._char_width
 
         cursor_width = self._char_width
         cursor_height = self._char_height
-        cursor_x = self.get_text_width(before_text)
+        cursor_x = text_width
         cursor_y = self.cursor_y * self._char_height
         if self.cursor_type == "bar":
             cursor_height = self.cursor_size

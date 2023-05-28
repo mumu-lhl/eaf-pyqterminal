@@ -41,16 +41,13 @@ class BaseBackend(object):
         self.width = width
         self.height = height
 
-        self.all_lines = [x for x in range(width)]
-        self.is_into_history_screen = False
+        self.all_line = {num for num in range(height)}
 
-        # `screen` is main screen, `screen1` is buffer screen, `screen2` is history screen
-        self.screen = QTerminalScreen(width, height, history=99999, ratio=0.3)
-        self.screen1 = QTerminalScreen(width, height, history=99999, ratio=0.3)
-        self.screen2 = QTerminalScreen(width, height, history=0, ratio=0.3)
+        self.screen = QTerminalScreen(width, height, history=99999)
+        self.buffer_screen = QTerminalScreen(width, height, history=99999)
+        self.history_screen = QTerminalScreen(width, height)
         self.stream = QTerminalStream(self.screen)
-        self.stream1 = QTerminalStream(self.screen1)
-        self.stream2 = QTerminalStream(self.screen1)
+        self.buffer_stream = QTerminalStream(self.buffer_screen)
 
     def cursor(self):
         return self.screen.cursor
@@ -58,11 +55,12 @@ class BaseBackend(object):
     def resize(self, width, height):
         self.width = width
         self.height = height
-        self.all_lines = {x for x in range(width)}
+
+        self.all_line = {num for num in range(height)}
 
         self.screen.resize(columns=width, lines=height)
-        self.screen1.resize(columns=width, lines=height)
-        self.screen2.resize(columns=width, lines=height)
+        self.buffer_screen.resize(columns=width, lines=height)
+        self.history_screen.resize(columns=width, lines=height)
 
     def write_to_screen(self, data: bytes):
         into = data.split(b"\x1b[?1049h")
@@ -70,35 +68,38 @@ class BaseBackend(object):
 
         if len(into) == 2:
             self.write_to_screen(into[0])
-            self.into_another_screen()
+            self.into_buffer_screen()
             data = into[1]
         if len(exit) == 2:
             self.write_to_screen(exit[0])
-            self.exit_current_screen()
+            self.exit_buffer_screen()
             data = exit[1]
+
+        # print(data)
 
         self.stream.feed(data)
 
-    def into_another_screen(self, history=False):
-        if history:
-            self.screen, self.screen2 = self.screen2, self.screen
-        else:
-            self.screen, self.screen1 = self.screen1, self.screen
-            self.stream, self.stream1 = self.stream1, self.stream
+    def into_buffer_screen(self):
+        self.screen, self.buffer_screen = self.buffer_screen, self.screen
+        self.stream, self.buffer_stream = self.buffer_stream, self.stream
 
-    def exit_current_screen(self, history=False):
-        self.screen.reset()
-        if self.is_into_history_screen and history:
-            self.is_into_history_screen = False
-            self.screen, self.screen2 = self.screen2, self.screen
-            self.screen.dirty.update(self.all_lines)
-        else:
-            self.screen, self.screen1 = self.screen1, self.screen
-            self.stream, self.stream1 = self.stream1, self.stream
-            self.screen.dirty.update(self.all_lines)
+    def exit_buffer_screen(self):
+        self.screen, self.buffer_screen = self.buffer_screen, self.screen
+        self.stream, self.buffer_stream = self.buffer_stream, self.stream
+        self.buffer_screen.reset()
+        self.screen.dirty.update(self.all_line)
+
+    def into_history_screen(self):
+        self.history_creen = self.screen
+        self.screen, self.history_screen = self.history_screen, self.screen
+
+    def exit_history_screen(self):
+        self.screen, self.history_screen = self.history_screen, self.screen
+        self.history_screen.reset()
+        self.screen.dirty.update(self.all_line)
 
     def get_title(self):
-        return self.screen.title or self.screen1.title
+        return self.screen.title or self.buffer_screen.title
 
 
 class PtyBackend(BaseBackend):
@@ -107,6 +108,9 @@ class PtyBackend(BaseBackend):
 
         self.width = width
         self.height = height
+
+        self.screen.send = self.send
+        self.buffer_screen.send = self.send
 
         p_pid, master_fd = pty.fork()
         if p_pid == 0:
@@ -124,9 +128,7 @@ class PtyBackend(BaseBackend):
         else:
             self.p_fd = master_fd
             self.p_pid = p_pid
-            p_out = os.fdopen(master_fd, "w+b", 0)
-            self.p_out = p_out
-            term.send = self.send
+            self.p_out = os.fdopen(master_fd, "w+b", 0)
 
         self.thread = threading.Thread(target=self.read)
         self.thread.start()

@@ -1,5 +1,3 @@
-#+OPTIONS: toc:nil html-postamble
-
 ** EAF PyQterminal
 
 A terminal written in PyQt6 for the [[https://github.com/emacs-eaf/emacs-application-framework][Emacs Application Framework]].
