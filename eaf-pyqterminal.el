@@ -55,18 +55,14 @@ If alpha < 0, don't set alpha for cursor"
 
 (defcustom eaf-pyqterminal-color-schema
   ;; Tango Dark
-  '(("background" "#000000")
-    ("black" "#000000")
-    ("blue" "#3465a4")
+  '(("blue" "#3465a4")
     ("brown" "#fce94f")
     ("cyan" "#06989a")
     ("cursor" "#eeeeec")
-    ("foreground" "#ffffff")
     ("green" "#4e9a06")
     ("magenta" "#75507b")
     ("red" "#cc0000")
     ("yellow" "#c4a000")
-    ("white" "#d3d7cf")
     ("brightblack" "#555753")
     ("brightblue" "#729fcf")
     ("brightcyan" "#34e2e2")
