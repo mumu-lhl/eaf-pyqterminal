@@ -75,8 +75,6 @@ class BaseBackend(object):
             self.exit_buffer_screen()
             data = exit[1]
 
-        # print(data)
-
         self.stream.feed(data)
 
     def into_buffer_screen(self):
@@ -158,4 +156,7 @@ class PtyBackend(BaseBackend):
         # https://github.com/pexpect/ptyprocess/blob/ce42a786ff6f4baff71382db9076c7398328abaf/ptyprocess/ptyprocess.py#L118
         TIOCSWINSZ = getattr(termios, "TIOCSWINSZ", -2146929561)
         s = struct.pack("HHHH", height, width, 0, 0)
-        fcntl.ioctl(self.p_fd, TIOCSWINSZ, s)
+        try:
+            fcntl.ioctl(self.p_fd, TIOCSWINSZ, s)
+        except:
+            pass

@@ -59,7 +59,7 @@ KEY_DICT = {
     Qt.Key.Key_Up: CSI_C0 + "A",
 }
 
-align = Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+align = Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
 
 
 class QTerminalWidget(QWidget):
@@ -178,7 +178,7 @@ class QTerminalWidget(QWidget):
         return brush
 
     def pixel2pos(self, x, y):
-        col = x // self._char_width
+        col = x // self._char_width - 1
         row = y // self._char_height
         return col, row
 
@@ -219,9 +219,11 @@ class QTerminalWidget(QWidget):
         fg: str,
         bg: str,
         painter: QPainter,
-        align: Qt.AlignmentFlag,
         style: list[str],
     ):
+        if text.strip() == "" and bg == "default":
+            return
+
         rect = QRect(start_x, start_y, text_width, self._char_height)
 
         if bg != "default":
@@ -256,38 +258,60 @@ class QTerminalWidget(QWidget):
 
         line = screen.buffer[line_num]
 
-        for col in range(screen.columns):
+        pre_char = pyte.screens.Char("")
+        same_text = ""
+        text_width = 0
+
+        for col in range(screen.columns + 1):
             char = line[col]
+            if col == screen.columns:
+                char = None
 
-            text_width = self._char_width
-            start_x += text_width
+            if (
+                char
+                and pre_char.bg == char.bg
+                and pre_char.fg == char.fg
+                and pre_char.reverse == char.reverse
+                and pre_char.bold == char.bold
+                and pre_char.italics == char.italics
+                and pre_char.underscore == char.underscore
+                and pre_char.strikethrough == char.strikethrough
+            ):
+                same_text += char.data
+                continue
+            elif same_text != "":
+                text_width = self.get_text_width(same_text)
 
-            fg = "white" if char.fg == "default" else char.fg
-            bg = "black" if char.bg == "default" else char.bg
-            if char.reverse:
-                fg, bg = bg, fg
+                fg = "white" if pre_char.fg == "default" else pre_char.fg
+                bg = "black" if pre_char.bg == "default" else pre_char.bg
+                if pre_char.reverse:
+                    fg, bg = bg, fg
 
-            style = []
-            if char.bold:
-                style.append("bold")
-            if char.italics:
-                style.append("italics")
-            if char.underscore:
-                style.append("underscore")
-            if char.strikethrough:
-                style.append("strikethrough")
+                style = []
+                if pre_char.bold:
+                    style.append("bold")
+                if pre_char.italics:
+                    style.append("italics")
+                if pre_char.underscore:
+                    style.append("underscore")
+                if pre_char.strikethrough:
+                    style.append("strikethrough")
 
-            self.draw_text(
-                char.data,
-                start_x,
-                start_y,
-                text_width,
-                fg,
-                bg,
-                painter,
-                align,
-                style,
-            )
+                self.draw_text(
+                    same_text,
+                    start_x,
+                    start_y,
+                    text_width,
+                    fg,
+                    bg,
+                    painter,
+                    style,
+                )
+
+            if char:
+                pre_char = char
+                same_text = char.data
+                start_x += text_width
 
     def paint_cursor(self, painter: QPainter):
         cursor = self.backend.cursor()
@@ -300,10 +324,8 @@ class QTerminalWidget(QWidget):
 
         screen = self.backend.screen
         line = screen.display[cursor.y]
-        before_text = line[: cursor.x + 1]
-        text_width = 0
-        for char in before_text:
-            text_width += self._char_width
+        before_text = line[: cursor.x]
+        text_width = self.get_text_width(before_text)
 
         cursor_width = self._char_width
         cursor_height = self._char_height
