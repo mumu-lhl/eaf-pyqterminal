@@ -24,7 +24,7 @@ import sys
 
 import pyte
 from core.buffer import interactive
-from core.utils import get_emacs_func_result, get_emacs_vars
+from core.utils import *
 from PyQt6.QtCore import QRect, Qt
 from PyQt6.QtGui import (
     QBrush,
@@ -97,6 +97,15 @@ class QTerminalWidget(QWidget):
                 self.cursor_color = color
                 continue
             self.colors[name] = color
+
+        self.theme_mode = get_emacs_theme_mode()
+        theme_foreground_color = get_emacs_theme_foreground()
+        theme_background_color = get_emacs_theme_background()
+
+        self.colors["foreground"] = QColor(theme_foreground_color)
+        self.colors["background"] = QColor(theme_background_color)
+        self.colors["black"] = QColor(theme_background_color) if self.theme_mode == "dark" else QColor("#000000")
+        self.colors["white"] = QColor(theme_background_color) if self.theme_mode == "light" else QColor("#FFFFFF")
 
         self.pens["default"] = QPen(self.colors["foreground"])
         self.brushes["default"] = QBrush(self.colors["background"])
@@ -282,8 +291,12 @@ class QTerminalWidget(QWidget):
             elif same_text != "":
                 text_width = self.get_text_width(same_text)
 
-                fg = "white" if pre_char.fg == "default" else pre_char.fg
-                bg = "black" if pre_char.bg == "default" else pre_char.bg
+                if self.theme_mode == "dark":
+                    fg = "white" if pre_char.fg == "default" else pre_char.fg
+                    bg = "black" if pre_char.bg == "default" else pre_char.bg
+                else:
+                    fg = "black" if pre_char.fg == "default" else pre_char.fg
+                    bg = "white" if pre_char.bg == "default" else pre_char.bg
                 if pre_char.reverse:
                     fg, bg = bg, fg
 
