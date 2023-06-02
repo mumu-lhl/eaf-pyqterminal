@@ -323,8 +323,10 @@ class QTerminalWidget(QWidget):
         self.cursor_y = cursor.y
 
         screen = self.backend.screen
-        line = screen.display[cursor.y]
-        before_text = line[: cursor.x]
+        line = screen.buffer[cursor.y]
+        before_text = ""
+        for num in range(cursor.x):
+            before_text += line[num].data
         text_width = self.get_text_width(before_text)
 
         cursor_width = self._char_width
