@@ -102,7 +102,6 @@ If alpha < 0, don't set alpha for cursor"
     ("C-u" . "eaf-send-key-sequence")
     ("C-v" . "eaf-send-key-sequence")
     ("C-w" . "eaf-send-key-sequence")
-    ("C-x" . "eaf-send-key-sequence")
     ("C-y" . "yank_text")
     ("C-z" . "eaf-send-key-sequence")
     ("M-f" . "eaf-send-key-sequence")
