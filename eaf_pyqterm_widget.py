@@ -104,8 +104,16 @@ class QTerminalWidget(QWidget):
 
         self.colors["foreground"] = QColor(theme_foreground_color)
         self.colors["background"] = QColor(theme_background_color)
-        self.colors["black"] = QColor(theme_background_color) if self.theme_mode == "dark" else QColor("#000000")
-        self.colors["white"] = QColor(theme_background_color) if self.theme_mode == "light" else QColor("#FFFFFF")
+        self.colors["black"] = (
+            QColor(theme_background_color)
+            if self.theme_mode == "dark"
+            else QColor("#000000")
+        )
+        self.colors["white"] = (
+            QColor(theme_background_color)
+            if self.theme_mode == "light"
+            else QColor("#FFFFFF")
+        )
 
         self.pens["default"] = QPen(self.colors["foreground"])
         self.brushes["default"] = QBrush(self.colors["background"])
@@ -115,16 +123,16 @@ class QTerminalWidget(QWidget):
         self.cursor_x = 0
         self.cursor_y = 0
 
-        self._selection = None
+        self.selection = None
 
         self.font = self.new_font()
 
         self.fm = QFontMetrics(self.font)
-        self._char_height = self.fm.height()
-        self._char_width = self.fm.maxWidth()
-        self._columns, self._rows = self.pixel2pos(self.width(), self.height())
+        self.char_height = self.fm.height()
+        self.char_width = self.fm.maxWidth()
+        self.columns, self.rows = self.pixel2pos(self.width(), self.height())
 
-        self.backend = backend.PtyBackend(self._columns, self._rows)
+        self.backend = backend.PtyBackend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
 
         self.startTimer(self.refresh_ms)
@@ -169,9 +177,7 @@ class QTerminalWidget(QWidget):
             return pen
 
         color = self.get_color(color_name)
-
         pen = QPen(color)
-        pen.setWidth(5)
         self.pens[color_name] = pen
         return pen
 
@@ -181,21 +187,20 @@ class QTerminalWidget(QWidget):
             return brush
 
         color = self.get_color(color_name)
-
         brush = QBrush(color)
         self.brushes[color_name] = brush
         return brush
 
     def pixel2pos(self, x, y):
-        col = x // self._char_width - 1
-        row = y // self._char_height
+        col = x // self.char_width - 1
+        row = y // self.char_height
         return col, row
 
     def resizeEvent(self, event):
         width = self.width()
         height = self.height()
-        self._columns, self._rows = self.pixel2pos(width, height)
-        self.backend.resize(self._columns, self._rows)
+        self.columns, self.rows = self.pixel2pos(width, height)
+        self.backend.resize(self.columns, self.rows)
         self.pixmap = QPixmap(width, height)
         self.paint_full_pixmap()
 
@@ -233,7 +238,7 @@ class QTerminalWidget(QWidget):
         if text.strip() == "" and bg == "default":
             return
 
-        rect = QRect(start_x, start_y, text_width, self._char_height)
+        rect = QRect(start_x, start_y, text_width, self.char_height)
 
         if bg != "default":
             painter.fillRect(rect, self.get_brush(bg))
@@ -243,7 +248,7 @@ class QTerminalWidget(QWidget):
         painter.drawText(rect, align, text)
 
     def paint_full_text(self, painter: QPainter):
-        for line_num in range(self._rows):
+        for line_num in range(self.rows):
             self.paint_line_text(painter, line_num)
 
     def paint_dirty_text(self, painter: QPainter):
@@ -259,10 +264,10 @@ class QTerminalWidget(QWidget):
 
     def paint_line_text(self, painter: QPainter, line_num: int):
         start_x = 0
-        start_y = line_num * self._char_height
+        start_y = line_num * self.char_height
         screen = self.backend.screen
 
-        clear_rect = QRect(start_x, start_y, self.width(), self._char_height)
+        clear_rect = QRect(start_x, start_y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
         line = screen.buffer[line_num]
@@ -290,6 +295,8 @@ class QTerminalWidget(QWidget):
                 continue
             elif same_text != "":
                 text_width = self.get_text_width(same_text)
+                # if same_text.strip() != "":
+                #     print(same_text, text_width)
 
                 if self.theme_mode == "dark":
                     fg = "white" if pre_char.fg == "default" else pre_char.fg
@@ -342,13 +349,13 @@ class QTerminalWidget(QWidget):
             before_text += line[num].data
         text_width = self.get_text_width(before_text)
 
-        cursor_width = self._char_width
-        cursor_height = self._char_height
+        cursor_width = self.char_width
+        cursor_height = self.char_height
         cursor_x = text_width
-        cursor_y = self.cursor_y * self._char_height
+        cursor_y = self.cursor_y * self.char_height
         if self.cursor_type == "bar":
             cursor_height = self.cursor_size
-            cursor_y += self._char_height - cursor_height
+            cursor_y += self.char_height - cursor_height
         elif self.cursor_type == "hbar":
             cursor_width = self.cursor_size
 
