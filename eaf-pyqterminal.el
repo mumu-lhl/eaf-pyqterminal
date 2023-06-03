@@ -24,7 +24,8 @@
   :type 'string
   :group 'eaf-pyqterminal)
 
-(defcustom eaf-pyqterminal-bell-sound-path (concat eaf-pyqterminal-path "bell.ogg")
+(defcustom eaf-pyqterminal-bell-sound-path
+  (concat eaf-pyqterminal-path "bell.ogg")
   "Bell sound path of EAF pyqterminal."
   :type 'string
   :group 'eaf-pyqterminal)
@@ -134,7 +135,12 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
   (let* ((args (make-hash-table :test 'equal))
          (expand-dir (expand-file-name dir)))
     (puthash "command" command args)
-    (puthash "directory" expand-dir args)
+    (puthash
+     "directory"
+     (if (eaf--called-from-wsl-on-windows-p)
+         (eaf--translate-wsl-url-to-windows expand-dir)
+       expand-dir)
+     args)
     (eaf-open dir "pyqterminal" (json-encode-hash-table args) always-new)))
 
 (defun eaf-pyqterminal-get-clipboard ()
@@ -143,21 +149,32 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
     (set-text-properties 0 (length source-data) nil source-data)
     source-data))
 
+(defun eaf--generate-terminal-command ()
+  (if (or (eaf--called-from-wsl-on-windows-p) (eq system-type 'windows-nt))
+      "powershell.exe"
+    (getenv "SHELL")))
+
+(defun eaf-ipython-command ()
+  (if (eaf--called-from-wsl-on-windows-p)
+      "ipython.exe"
+    "ipython"))
+
 ;;;###autoload
 (defun eaf-open-pyqterminal ()
   "Open EAF PyQTerminal."
   (interactive)
   (eaf-pyqterminal-run-command-in-dir
-   (getenv "SHELL") (eaf--non-remote-default-directory)
+   (eaf--generate-terminal-command) (eaf--non-remote-default-directory)
    t))
 
 ;;;###autoload
 (defun eaf-open-ipython ()
   "Open ipython by EAF PyQTerminal."
   (interactive)
-  (eaf-pyqterminal-run-command-in-dir
-   "ipython" (eaf--non-remote-default-directory)
-   t))
+  (if (executable-find (eaf-ipython-command))
+      (eaf-pyqterminal-run-command-in-dir
+       (eaf-ipython-command) (eaf--non-remote-default-directory)
+       t)))
 
 (provide 'eaf-pyqterminal)
 ;;; eaf-pyqterminal.el ends here

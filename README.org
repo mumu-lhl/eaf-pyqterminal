@@ -2,8 +2,6 @@
 
 A terminal written in PyQt6 for the [[https://github.com/emacs-eaf/emacs-application-framework][Emacs Application Framework]].
 
-*Note: It doesn't support Windows currently.*
-
 *** Load application
 
 [[https://github.com/emacs-eaf/emacs-application-framework#install][Install EAF]] first, then add below code in your emacs config:

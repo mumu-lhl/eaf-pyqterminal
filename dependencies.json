@@ -6,7 +6,8 @@
     ],
     "win32": [
       "playsound",
-      "pyte"
+      "pyte",
+      "pywinpty"
     ],
     "darwin": [
       "playsound",

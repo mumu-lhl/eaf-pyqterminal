@@ -21,12 +21,17 @@
 
 import fcntl
 import os
-import pty
+import platform
 import signal
 import struct
 import sys
 import termios
 import threading
+
+if platform == "Windows":
+    from winpty import PtyProcess as pty
+else:
+    import pty
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -100,6 +105,63 @@ class BaseBackend(object):
         return self.screen.title or self.buffer_screen.title
 
 
+class Pty():
+    def __init__(self, width, height):
+        env = os.environ
+        env.update({
+            "TERM": "xterm-256color",
+            "COLORTERM": "truecolor",
+            "COLUMNS": str(width),
+            "LINES": str(height),
+        })
+
+        if platform == "Windows":
+            self._spawn_winpty(env)
+        else:
+            self._spawn_pty(env)
+
+    def _spawn_pty(self, env):
+        p_pid, master_fd = pty.fork()
+        if p_pid == 0:
+            os.chdir(start_directory)  # noqa: F821
+            os.execvpe(argv[0], argv, env)  # noqa: F821
+        else:
+            self.p_fd = master_fd
+            self.p_pid = p_pid
+            self.pty = os.fdopen(master_fd, "w+b", 0)
+
+    def _spawn_winpty(self, env):
+        self.pty = pty.spawn(list(argv[0]) + argv, start_directory, env, (env["COLUMNS"], env["LINES"]))  # noqa: F821
+
+    def read(self):
+        return self.pty.read(65536)
+
+    def write(self, data):
+        self.pty.write(data)
+
+    def close(self):
+        self.pty.close()
+        if platform != "Windows":
+            os.kill(self.p_pid, signal.SIGTERM)
+
+    def resize(self, width, height):
+        if platform == "Windows":
+            self._resize_winpty(width, height)
+        else:
+            self._resize_pty(width, height)
+
+    def _resize_pty(self, width, height):
+        # https://github.com/pexpect/ptyprocess/blob/ce42a786ff6f4baff71382db9076c7398328abaf/ptyprocess/ptyprocess.py#L118
+        TIOCSWINSZ = getattr(termios, "TIOCSWINSZ", -2146929561)
+        s = struct.pack("HHHH", height, width, 0, 0)
+        try:
+            fcntl.ioctl(self.p_fd, TIOCSWINSZ, s)
+        except:
+            pass
+
+    def _resize_winpty(self, width, height):
+        self.pty.set_size(width, height)
+
 class PtyBackend(BaseBackend):
     def __init__(self, width, height):
         super().__init__(width, height)
@@ -110,23 +172,7 @@ class PtyBackend(BaseBackend):
         self.screen.send = self.send
         self.buffer_screen.send = self.send
 
-        p_pid, master_fd = pty.fork()
-        if p_pid == 0:
-            env = os.environ
-            env.update(
-                {
-                    "TERM": "xterm-256color",
-                    "COLORTERM": "truecolor",
-                    "COLUMNS": str(width),
-                    "LINES": str(height),
-                }
-            )
-            os.chdir(start_directory)  # noqa: F821
-            os.execvpe(argv[0], argv, env)  # noqa: F821
-        else:
-            self.p_fd = master_fd
-            self.p_pid = p_pid
-            self.p_out = os.fdopen(master_fd, "w+b", 0)
+        self.pty = Pty(width, height)
 
         self.thread = threading.Thread(target=self.read)
         self.thread.start()
@@ -134,7 +180,7 @@ class PtyBackend(BaseBackend):
     def read(self):
         while True:
             try:
-                data = self.p_out.read(65536)
+                data = self.pty.read()
                 self.write_to_screen(data)
             except (OSError, IOError):
                 self.close()
@@ -142,21 +188,15 @@ class PtyBackend(BaseBackend):
 
     def send(self, data: str):
         try:
-            self.p_out.write(data.encode())
+            self.pty.write(data.encode())
         except:
             self.close()
 
     def close(self):
-        os.kill(self.p_pid, signal.SIGTERM)
-        self.p_out.close()
+        self.pty.close()
         self.close_buffer()
 
     def resize(self, width, height):
         super().resize(width, height)
-        # https://github.com/pexpect/ptyprocess/blob/ce42a786ff6f4baff71382db9076c7398328abaf/ptyprocess/ptyprocess.py#L118
-        TIOCSWINSZ = getattr(termios, "TIOCSWINSZ", -2146929561)
-        s = struct.pack("HHHH", height, width, 0, 0)
-        try:
-            fcntl.ioctl(self.p_fd, TIOCSWINSZ, s)
-        except:
-            pass
+
+        self.pty.resize(width, height)
