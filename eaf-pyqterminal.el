@@ -84,6 +84,7 @@ If alpha < 0, don't set alpha for cursor"
     ("C-b" . "eaf-send-key-sequence")
     ("C-c C-c" . "eaf-send-second-key-sequence")
     ("C-c C-x" . "eaf-send-second-key-sequence")
+    ("C-c C-m" . "eaf-send-second-key-sequence")
     ("C-d" . "eaf-send-key-sequence")
     ("C-e" . "eaf-send-key-sequence")
     ("C-f" . "eaf-send-key-sequence")
@@ -92,7 +93,6 @@ If alpha < 0, don't set alpha for cursor"
     ("C-j" . "eaf-send-key-sequence")
     ("C-k" . "eaf-send-key-sequence")
     ("C-l" . "eaf-send-key-sequence")
-    ("C-m" . "eaf-send-key-sequence")
     ("C-n" . "eaf-send-key-sequence")
     ("C-o" . "eaf-send-key-sequence")
     ("C-p" . "eaf-send-key-sequence")
@@ -107,6 +107,7 @@ If alpha < 0, don't set alpha for cursor"
     ("M-f" . "eaf-send-key-sequence")
     ("M-b" . "eaf-send-key-sequence")
     ("M-d" . "eaf-send-key-sequence")
+    ("C-m" . "eaf-send-return-key")
     ("M-DEL" . "eaf-send-alt-backspace-sequence")
     ("M-<backspace>" . "eaf-send-alt-backspace-sequence")
     ("<escape>" . "eaf-send-escape-key"))
@@ -128,6 +129,62 @@ If alpha < 0, don't set alpha for cursor"
    "send_key_sequence"
    eaf--buffer-id
    (nth 1 (split-string (key-description (this-command-keys-vector))))))
+
+(defun eaf-send-return-key ()
+  (interactive)
+  (eaf-call-async "send_key" eaf--buffer-id "<return>"))
+
+(defun eaf-pyqterminal-run-command-in-dir (command dir &optional always-new)
+  "Run COMMAND in terminal in directory DIR.
+
+If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
+  (let* ((args (make-hash-table :test 'equal))
+         (expand-dir (expand-file-name dir)))
+    (puthash "command" command args)
+    (puthash
+     "directory"
+     (if (eaf--called-from-wsl-on-windows-p)
+         (eaf--translate-wsl-url-to-windows expand-dir)
+       expand-dir)
+     args)
+    (eaf-open dir "pyqterminal" (json-encode-hash-table args) always-new)))
+
+(defun eaf-pyqterminal-get-clipboard ()
+  "Get clipboard text."
+  (let* ((source-data (current-kill 0)))
+    (set-text-properties 0 (length source-data) nil source-data)
+    source-data))
+
+(defun eaf--generate-terminal-command ()
+  (if (or (eaf--called-from-wsl-on-windows-p) (eq system-type 'windows-nt))
+      "powershell.exe"
+    (getenv "SHELL")))
+
+(defun eaf-ipython-command ()
+  (if (eaf--called-from-wsl-on-windows-p)
+      "ipython.exe"
+    "ipython"))
+
+;;;###autoload
+(defun eaf-open-pyqterminal ()
+  "Open EAF PyQTerminal."
+  (interactive)
+  (eaf-pyqterminal-run-command-in-dir
+   (eaf--generate-terminal-command) (eaf--non-remote-default-directory)
+   t))
+
+;;;###autoload
+(defun eaf-open-ipython ()
+  "Open ipython by EAF PyQTerminal."
+  (interactive)
+  (if (executable-find (eaf-ipython-command))
+      (eaf-pyqterminal-run-command-in-dir
+       (eaf-ipython-command) (eaf--non-remote-default-directory)
+       t)))
+
+(provide 'eaf-pyqterminal)
+;;; eaf-pyqterminal.el ends here
+))
 
 (defun eaf-pyqterminal-run-command-in-dir (command dir &optional always-new)
   "Run COMMAND in terminal in directory DIR.
