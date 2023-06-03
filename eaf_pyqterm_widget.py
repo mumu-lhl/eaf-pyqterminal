@@ -31,6 +31,7 @@ from PyQt6.QtGui import (
     QColor,
     QFont,
     QFontMetrics,
+    QFontDatabase,
     QKeyEvent,
     QPainter,
     QPen,
@@ -91,6 +92,8 @@ class QTerminalWidget(QWidget):
             )
         )
 
+        self.ensure_font_exist()
+
         for name, color_str in color_schema:
             color = QColor(color_str)
             if name == "cursor":
@@ -136,6 +139,11 @@ class QTerminalWidget(QWidget):
         self.pixmap = QPixmap(self.width(), self.height())
 
         self.startTimer(self.refresh_ms)
+
+    def ensure_font_exist(self):
+        '''Use system Mono font if user's font is not exist.'''
+        if self.font_family not in QFontDatabase.families():
+            self.font_family = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
 
     def new_font(self, style=[]):
         font = QFont()
