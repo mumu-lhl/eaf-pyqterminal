@@ -20,7 +20,9 @@
   :group 'eaf-pyqterminal)
 
 (defcustom eaf-pyqterminal-font-family ""
-  "Font family of EAF pyqterminal."
+  "Font family of EAF pyqterminal, we will use system Mono font if user choose font is not exist.
+
+Recommend use Nerd font to render icon in terminal."
   :type 'string
   :group 'eaf-pyqterminal)
 
