@@ -1,7 +1,6 @@
 ;;; eaf-pyqterminal.el --- -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 by Mumulhl <mumulhl@duck.com>
-;; URL:
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;;; Commentary:
@@ -11,16 +10,16 @@
 (defvar eaf-pyqterminal-path (file-name-directory load-file-name))
 
 (defgroup eaf-pyqterminal nil
-  "EAF PyQTerminal."
+  "EAF PyQterminal."
   :group 'eaf)
 
 (defcustom eaf-pyqterminal-font-size 16
-  "Font size of EAF pyqterminal."
+  "Font size of EAF PyQterminal."
   :type 'integer
   :group 'eaf-pyqterminal)
 
 (defcustom eaf-pyqterminal-font-family ""
-  "Font family of EAF pyqterminal, we will use system Mono font if user choose font is not exist.
+  "Font family of EAF PyQterminal, we will use system Mono font if user choose font is not exist.
 
 Recommend use Nerd font to render icon in terminal."
   :type 'string
@@ -28,7 +27,7 @@ Recommend use Nerd font to render icon in terminal."
 
 (defcustom eaf-pyqterminal-bell-sound-path
   (concat eaf-pyqterminal-path "bell.ogg")
-  "Bell sound path of EAF pyqterminal."
+  "Bell sound path of EAF PyQterminal."
   :type 'string
   :group 'eaf-pyqterminal)
 
@@ -74,7 +73,7 @@ If alpha < 0, don't set alpha for cursor"
     ("brightred" "#ef2929")
     ("brightwhite" "#eeeeec")
     ("brightyellow" "#fce94f"))
-  "Color schema for EAF pyqterminal."
+  "Color schema for EAF PyQterminal."
   :type 'alist
   :group 'eaf-pyqterminal)
 
@@ -110,7 +109,7 @@ If alpha < 0, don't set alpha for cursor"
     ("M-DEL" . "eaf-send-alt-backspace-sequence")
     ("M-<backspace>" . "eaf-send-alt-backspace-sequence")
     ("<escape>" . "eaf-send-escape-key"))
-  "The keybinding of EAF Terminal."
+  "The keybinding of EAF PyQterminal."
   :type 'cons)
 
 (add-to-list
@@ -162,7 +161,7 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
 
 ;;;###autoload
 (defun eaf-open-pyqterminal ()
-  "Open EAF PyQTerminal."
+  "Open EAF PyQterminal."
   (interactive)
   (eaf-pyqterminal-run-command-in-dir
    (eaf--generate-terminal-command) (eaf--non-remote-default-directory)
@@ -170,12 +169,13 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
 
 ;;;###autoload
 (defun eaf-open-ipython ()
-  "Open ipython by EAF PyQTerminal."
+  "Open ipython by EAF PyQterminal."
   (interactive)
   (if (executable-find (eaf-ipython-command))
       (eaf-pyqterminal-run-command-in-dir
        (eaf-ipython-command) (eaf--non-remote-default-directory)
-       t)))
+       t)
+    (message "[EAF/terminal] Please install ipython first.")))
 
 (provide 'eaf-pyqterminal)
 ;;; eaf-pyqterminal.el ends here
