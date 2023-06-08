@@ -12,6 +12,8 @@ A terminal written in PyQt6 for the [[https://github.com/emacs-eaf/emacs-applica
   (require 'eaf-pyqterminal)
 #+end_src
 
+It is recommended to install [[https://www.nerdfonts.com][Nerd Fonts]] to support icon display, after install Nerd Fonts, remember set option eaf-pyqterminal-font-family
+
 *** Dependency List
 
 | Package   | Description       |
