@@ -132,7 +132,6 @@ class QTerminalWidget(QWidget):
         self.char_height = self.fm.height()
         self.char_width = self.fm.maxWidth()
         self.columns, self.rows = self.pixel2pos(self.width(), self.height())
-        print(self.fm.horizontalAdvance("W" * 8))
 
         self.backend = backend.PtyBackend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
