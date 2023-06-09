@@ -50,7 +50,6 @@ class BaseBackend(object):
 
         self.screen = QTerminalScreen(width, height, history=99999)
         self.buffer_screen = QTerminalScreen(width, height, history=99999)
-        self.history_screen = QTerminalScreen(width, height)
         self.stream = QTerminalStream(self.screen)
         self.buffer_stream = QTerminalStream(self.buffer_screen)
 
@@ -65,7 +64,6 @@ class BaseBackend(object):
 
         self.screen.resize(columns=width, lines=height)
         self.buffer_screen.resize(columns=width, lines=height)
-        self.history_screen.resize(columns=width, lines=height)
 
     def write_to_screen(self, data: bytes):
         into = data.split(b"\x1b[?1049h")
@@ -90,15 +88,6 @@ class BaseBackend(object):
         self.screen, self.buffer_screen = self.buffer_screen, self.screen
         self.stream, self.buffer_stream = self.buffer_stream, self.stream
         self.buffer_screen.reset()
-        self.screen.dirty.update(self.all_line)
-
-    def into_history_screen(self):
-        self.history_creen = self.screen
-        self.screen, self.history_screen = self.history_screen, self.screen
-
-    def exit_history_screen(self):
-        self.screen, self.history_screen = self.history_screen, self.screen
-        self.history_screen.reset()
         self.screen.dirty.update(self.all_line)
 
     def get_title(self):

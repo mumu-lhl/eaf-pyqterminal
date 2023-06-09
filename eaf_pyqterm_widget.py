@@ -126,8 +126,6 @@ class QTerminalWidget(QWidget):
         self.cursor_x = 0
         self.cursor_y = 0
 
-        self.selection = None
-
         self.font = self.new_font()
 
         self.fm = QFontMetricsF(self.font)
@@ -232,9 +230,6 @@ class QTerminalWidget(QWidget):
         if self.title != title:
             self.title = title
             self.change_title(f"Term [{title}]")
-
-    def paint_selection(self, painter):
-        pass
 
     def draw_text(
         self,
