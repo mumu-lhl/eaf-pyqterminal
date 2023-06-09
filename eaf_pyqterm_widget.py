@@ -25,13 +25,13 @@ import sys
 import pyte
 from core.buffer import interactive
 from core.utils import *
-from PyQt6.QtCore import QRect, Qt
+from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import (
     QBrush,
     QColor,
     QFont,
-    QFontMetrics,
     QFontDatabase,
+    QFontMetricsF,
     QKeyEvent,
     QPainter,
     QPen,
@@ -130,10 +130,11 @@ class QTerminalWidget(QWidget):
 
         self.font = self.new_font()
 
-        self.fm = QFontMetrics(self.font)
+        self.fm = QFontMetricsF(self.font)
         self.char_height = self.fm.height()
         self.char_width = self.fm.maxWidth()
         self.columns, self.rows = self.pixel2pos(self.width(), self.height())
+        print(self.fm.horizontalAdvance("W" * 8))
 
         self.backend = backend.PtyBackend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
@@ -141,23 +142,26 @@ class QTerminalWidget(QWidget):
         self.startTimer(self.refresh_ms)
 
     def ensure_font_exist(self):
-        '''Use system Mono font if user's font is not exist.'''
+        """Use system Mono font if user's font is not exist."""
         if self.font_family not in QFontDatabase.families():
-            self.font_family = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
+            self.font_family = QFontDatabase.systemFont(
+                QFontDatabase.SystemFont.FixedFont
+            ).family()
 
     def new_font(self, style=[]):
         font = QFont()
         font.setFamily(self.font_family)
         font.setPixelSize(self.font_size)
-        for s in style:
-            if s == "bold":
-                font.setBold(True)
-            elif s == "underscore":
-                font.setUnderline(True)
-            elif s == "italics":
-                font.setItalic(True)
-            elif s == "strikethrough":
-                font.setStrikeOut(True)
+
+        if "bold" in style:
+            font.setBold(True)
+        if "underscore" in style:
+            font.setUnderline(True)
+        if "italics" in style:
+            font.setItalic(True)
+        if "strikethrough" in style:
+            font.setStrikeOut(True)
+
         return font
 
     def get_font(self, style: list[str] = []) -> QFont:
@@ -200,8 +204,8 @@ class QTerminalWidget(QWidget):
         return brush
 
     def pixel2pos(self, x, y):
-        col = x // self.char_width - 1
-        row = y // self.char_height
+        col = int(x / self.char_width - 1)
+        row = int(y / self.char_height)
         return col, row
 
     def resizeEvent(self, event):
@@ -246,7 +250,7 @@ class QTerminalWidget(QWidget):
         if text.strip() == "" and bg == "default":
             return
 
-        rect = QRect(start_x, start_y, text_width, self.char_height)
+        rect = QRectF(start_x, start_y, text_width, self.char_height)
 
         if bg != "default":
             painter.fillRect(rect, self.get_brush(bg))
@@ -275,7 +279,7 @@ class QTerminalWidget(QWidget):
         start_y = line_num * self.char_height
         screen = self.backend.screen
 
-        clear_rect = QRect(start_x, start_y, self.width(), self.char_height)
+        clear_rect = QRectF(start_x, start_y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
         line = screen.buffer[line_num]
@@ -303,8 +307,6 @@ class QTerminalWidget(QWidget):
                 continue
             elif same_text != "":
                 text_width = self.get_text_width(same_text)
-                # if same_text.strip() != "":
-                #     print(same_text, text_width)
 
                 if self.theme_mode == "dark":
                     fg = "white" if pre_char.fg == "default" else pre_char.fg
@@ -374,7 +376,7 @@ class QTerminalWidget(QWidget):
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(brush)
-        painter.drawRect(QRect(cursor_x, cursor_y, cursor_width, cursor_height))
+        painter.drawRect(QRectF(cursor_x, cursor_y, cursor_width, cursor_height))
 
     def paint_full_pixmap(self):
         painter = QPainter(self.pixmap)

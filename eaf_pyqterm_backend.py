@@ -105,15 +105,17 @@ class BaseBackend(object):
         return self.screen.title or self.buffer_screen.title
 
 
-class Pty():
+class Pty:
     def __init__(self, width, height):
         env = os.environ
-        env.update({
-            "TERM": "xterm-256color",
-            "COLORTERM": "truecolor",
-            "COLUMNS": str(width),
-            "LINES": str(height),
-        })
+        env.update(
+            {
+                "TERM": "xterm-256color",
+                "COLORTERM": "truecolor",
+                "COLUMNS": str(width),
+                "LINES": str(height),
+            }
+        )
 
         if platform == "Windows":
             self._spawn_winpty(env)
@@ -131,7 +133,12 @@ class Pty():
             self.pty = os.fdopen(master_fd, "w+b", 0)
 
     def _spawn_winpty(self, env):
-        self.pty = pty.spawn(list(argv[0]) + argv, start_directory, env, (env["COLUMNS"], env["LINES"]))  # noqa: F821
+        self.pty = pty.spawn(
+            list(argv[0]) + argv,  # noqa: F821
+            start_directory,  # noqa: F821
+            env,
+            (env["COLUMNS"], env["LINES"]),
+        )
 
     def read(self):
         return self.pty.read(65536)
@@ -161,6 +168,7 @@ class Pty():
 
     def _resize_winpty(self, width, height):
         self.pty.set_size(width, height)
+
 
 class PtyBackend(BaseBackend):
     def __init__(self, width, height):
