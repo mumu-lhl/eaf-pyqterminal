@@ -134,8 +134,8 @@ class QTerminalWidget(QWidget):
 
         self.fm = QFontMetricsF(self.font)
         self.char_height = self.fm.height()
-        self.char_width = self.get_text_width("W")
-        self.columns, self.rows = self.get_col_and_row(self.width(), self.height())
+        self.char_width = self.fm.maxWidth()
+        self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
 
         self.backend = backend.PtyBackend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
@@ -197,24 +197,15 @@ class QTerminalWidget(QWidget):
         self.brushes[color_name] = brush
         return brush
 
-    def get_col_and_row(self, max_width, max_height):
-        col = int(max_width / self.char_width)
-        row = int(max_height / self.char_height)
-
-        check = True
-        while check:
-            width = self.get_text_width("W" * col)
-            if width < max_width and max_width - width >= self.char_width:
-                col += 1
-            else:
-                check = False
-
+    def pixel_to_position(self, x, y):
+        col = int(x / self.char_width - 1)
+        row = int(y / self.char_height)
         return col, row
 
     def resizeEvent(self, event):
         width = self.width()
         height = self.height()
-        self.columns, self.rows = self.get_col_and_row(width, height)
+        self.columns, self.rows = self.pixel_to_position(width, height)
         self.backend.resize(self.columns, self.rows)
         self.pixmap = QPixmap(width, height)
         self.paint_full_pixmap()
