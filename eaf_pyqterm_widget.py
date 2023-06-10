@@ -60,7 +60,7 @@ KEY_DICT = {
     Qt.Key.Key_Up: CSI_C0 + "A",
 }
 
-align = Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+align = Qt.AlignmentFlag.AlignBottom
 
 
 class QTerminalWidget(QWidget):
@@ -131,7 +131,7 @@ class QTerminalWidget(QWidget):
         self.fm = QFontMetricsF(self.font)
         self.char_height = self.fm.height()
         self.char_width = self.fm.maxWidth()
-        self.columns, self.rows = self.pixel2pos(self.width(), self.height())
+        self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
 
         self.backend = backend.PtyBackend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
@@ -200,7 +200,7 @@ class QTerminalWidget(QWidget):
         self.brushes[color_name] = brush
         return brush
 
-    def pixel2pos(self, x, y):
+    def pixel_to_position(self, x, y):
         col = int(x / self.char_width - 1)
         row = int(y / self.char_height)
         return col, row
@@ -208,7 +208,7 @@ class QTerminalWidget(QWidget):
     def resizeEvent(self, event):
         width = self.width()
         height = self.height()
-        self.columns, self.rows = self.pixel2pos(width, height)
+        self.columns, self.rows = self.pixel_to_position(width, height)
         self.backend.resize(self.columns, self.rows)
         self.pixmap = QPixmap(width, height)
         self.paint_full_pixmap()
@@ -230,29 +230,6 @@ class QTerminalWidget(QWidget):
             self.title = title
             self.change_title(f"Term [{title}]")
 
-    def draw_text(
-        self,
-        text: str,
-        start_x: int,
-        start_y: int,
-        text_width: int,
-        fg: str,
-        bg: str,
-        painter: QPainter,
-        style: list[str],
-    ):
-        if text.strip() == "" and bg == "default":
-            return
-
-        rect = QRectF(start_x, start_y, text_width, self.char_height)
-
-        if bg != "default":
-            painter.fillRect(rect, self.get_brush(bg))
-
-        painter.setFont(self.get_font(style))
-        painter.setPen(self.get_pen(fg))
-        painter.drawText(rect, align, text)
-
     def paint_full_text(self, painter: QPainter):
         for line_num in range(self.rows):
             self.paint_line_text(painter, line_num)
@@ -268,6 +245,58 @@ class QTerminalWidget(QWidget):
             line_num = screen.dirty.pop()
             self.paint_line_text(painter, line_num)
 
+    def check_draw_together(
+        self, pre_char: pyte.screens.Char, char: pyte.screens.Char
+    ) -> bool:
+        return (
+            pre_char.bg == char.bg
+            and pre_char.fg == char.fg
+            and pre_char.reverse == char.reverse
+            and pre_char.bold == char.bold
+            and pre_char.italics == char.italics
+            and pre_char.underscore == char.underscore
+            and pre_char.strikethrough == char.strikethrough
+        )
+
+    def draw_text(
+        self,
+        painter: QPainter,
+        text: str,
+        text_width: float,
+        pre_char: pyte.screens.Char,
+        start_x: float,
+        start_y: float,
+    ):
+        fg = "black" if pre_char.fg == "default" else pre_char.fg
+        bg = "white" if pre_char.bg == "default" else pre_char.bg
+        if self.theme_mode == "dark":
+            fg = "white" if pre_char.fg == "default" else pre_char.fg
+            bg = "black" if pre_char.bg == "default" else pre_char.bg
+        if pre_char.reverse:
+            fg, bg = bg, fg
+
+        if text.strip() == "" and bg == "default":
+            return
+
+        style = []
+        if pre_char.bold:
+            style.append("bold")
+        if pre_char.italics:
+            style.append("italics")
+        if pre_char.underscore:
+            style.append("underscore")
+        if pre_char.strikethrough:
+            style.append("strikethrough")
+
+        rect = QRectF(start_x, start_y, text_width, self.char_height)
+
+        if bg != "default":
+            painter.fillRect(rect, self.get_brush(bg))
+
+        painter.setFont(self.get_font(style))
+        painter.setPen(self.get_pen(fg))
+        painter.drawText(rect, align, text)
+
     def paint_line_text(self, painter: QPainter, line_num: int):
         start_x = 0
         start_y = line_num * self.char_height
@@ -279,63 +308,41 @@ class QTerminalWidget(QWidget):
         line = screen.buffer[line_num]
 
         pre_char = pyte.screens.Char("")
+        is_two_width = False
+        real_is_two_width = False
         same_text = ""
-        text_width = 0
 
-        for col in range(screen.columns + 1):
-            char = line[col]
-            if col == screen.columns:
+        for col in range(len(line) + 1):
+            if col == len(line):
                 char = None
+            else:
+                char = line[col]
 
-            if (
-                char
-                and pre_char.bg == char.bg
-                and pre_char.fg == char.fg
-                and pre_char.reverse == char.reverse
-                and pre_char.bold == char.bold
-                and pre_char.italics == char.italics
-                and pre_char.underscore == char.underscore
-                and pre_char.strikethrough == char.strikethrough
-            ):
+            if char and char.data == "":
+                continue
+
+            if char and (line[col + 1].data == "" or line[col - 1].data == ""):
+                is_two_width = True
+            else:
+                is_two_width = False
+                real_is_two_width = False
+
+            if char and self.check_draw_together(pre_char, char) and not is_two_width:
                 same_text += char.data
                 continue
-            elif same_text != "":
-                text_width = self.get_text_width(same_text)
 
-                if self.theme_mode == "dark":
-                    fg = "white" if pre_char.fg == "default" else pre_char.fg
-                    bg = "black" if pre_char.bg == "default" else pre_char.bg
-                else:
-                    fg = "black" if pre_char.fg == "default" else pre_char.fg
-                    bg = "white" if pre_char.bg == "default" else pre_char.bg
-                if pre_char.reverse:
-                    fg, bg = bg, fg
+            text_width = self.get_text_width(same_text, real_is_two_width)
 
-                style = []
-                if pre_char.bold:
-                    style.append("bold")
-                if pre_char.italics:
-                    style.append("italics")
-                if pre_char.underscore:
-                    style.append("underscore")
-                if pre_char.strikethrough:
-                    style.append("strikethrough")
+            self.draw_text(painter, same_text, text_width, pre_char, start_x, start_y)
 
-                self.draw_text(
-                    same_text,
-                    start_x,
-                    start_y,
-                    text_width,
-                    fg,
-                    bg,
-                    painter,
-                    style,
-                )
+            start_x += text_width
+
+            if is_two_width:
+                real_is_two_width = True
 
             if char:
                 pre_char = char
                 same_text = char.data
-                start_x += text_width
 
     def paint_cursor(self, painter: QPainter):
         cursor = self.backend.cursor()
@@ -348,10 +355,12 @@ class QTerminalWidget(QWidget):
 
         screen = self.backend.screen
         line = screen.buffer[cursor.y]
-        before_text = ""
-        for num in range(cursor.x):
-            before_text += line[num].data
-        text_width = self.get_text_width(before_text)
+        text_width = 0
+        for col in range(cursor.x):
+            char = line[col].data
+            if char == "":
+                continue
+            text_width += self.get_text_width(char, line[col + 1].data == "")
 
         cursor_width = self.char_width
         cursor_height = self.char_height
@@ -382,8 +391,8 @@ class QTerminalWidget(QWidget):
         self.paint_dirty_text(painter)
         self.paint_cursor(painter)
 
-    def get_text_width(self, text: str):
-        return self.fm.horizontalAdvance(text)
+    def get_text_width(self, text: str, is_two_width=False):
+        return self.char_width * 2 if is_two_width else self.fm.horizontalAdvance(text)
 
     def focusProxy(self):
         return self
