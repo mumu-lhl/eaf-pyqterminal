@@ -134,7 +134,7 @@ class QTerminalWidget(QWidget):
 
         self.fm = QFontMetricsF(self.font)
         self.char_height = self.fm.height()
-        self.char_width = self.fm.maxWidth()
+        self.char_width = self.get_text_width("W")
         self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
 
         self.backend = backend.PtyBackend(self.columns, self.rows)
@@ -198,7 +198,7 @@ class QTerminalWidget(QWidget):
         return brush
 
     def pixel_to_position(self, x, y):
-        col = int(x / self.char_width - 1)
+        col = int(x / self.char_width)
         row = int(y / self.char_height)
         return col, row
 

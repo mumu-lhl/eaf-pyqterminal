@@ -31,4 +31,4 @@ EAF PyQterminal uses code of these projects:
 
 There will not be this project if there aren't those contributer:
 
-@@html:<a href="https://github.com/mumu-lhl/eaf-pyqterminal/graphs/contributors">@@@@html:<img src="https://contrib.rocks/image?repo=mumu-lhl/eaf-pyqterminal" />@@@@html:</a>@@
+#+html: <a href="https://github.com/mumu-lhl/eaf-pyqterminal/graphs/contributors"><img src="https://contrib.rocks/image?repo=mumu-lhl/eaf-pyqterminal" /></a>
