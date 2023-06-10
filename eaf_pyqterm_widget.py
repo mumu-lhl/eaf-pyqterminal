@@ -61,7 +61,7 @@ KEY_DICT = {
     Qt.Key.Key_Up: CSI_C0 + "A",
 }
 
-align = Qt.AlignmentFlag.AlignBottom
+align = Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter
 
 LineType = Enum("LineType", ("Underline", "StrikeOut"))
 StyleType = Enum("StyleType", ("Bold", "Italics", "Underline", "StrikeOut"))
