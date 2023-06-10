@@ -328,8 +328,8 @@ class QTerminalWidget(QWidget):
         real_is_two_width = False
         same_text = ""
 
-        for col in range(len(line) + 1):
-            if col == len(line):
+        for col in range(screen.columns + 1):
+            if col == screen.columns:
                 char = None
             else:
                 char = line[col]
