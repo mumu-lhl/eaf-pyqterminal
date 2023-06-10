@@ -31,7 +31,7 @@ Recommend use Nerd font to render icon in terminal."
   :type 'string
   :group 'eaf-pyqterminal)
 
-(defcustom eaf-pyqterminal-refresh-ms 100
+(defcustom eaf-pyqterminal-refresh-ms 17
   "Maybe need to set this variable when you change repeat rate."
   :type 'integer
   :group 'eaf-pyqterminal)
