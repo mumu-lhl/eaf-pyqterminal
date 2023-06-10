@@ -21,11 +21,12 @@
 
 import os
 import sys
+from enum import Enum
 
 import pyte
 from core.buffer import interactive
 from core.utils import *
-from PyQt6.QtCore import QRectF, Qt
+from PyQt6.QtCore import QLineF, QRectF, Qt
 from PyQt6.QtGui import (
     QBrush,
     QColor,
@@ -61,6 +62,9 @@ KEY_DICT = {
 }
 
 align = Qt.AlignmentFlag.AlignBottom
+
+LineType = Enum("LineType", ("Underline", "StrikeOut"))
+StyleType = Enum("StyleType", ("Bold", "Italics", "Underline", "StrikeOut"))
 
 
 class QTerminalWidget(QWidget):
@@ -126,7 +130,7 @@ class QTerminalWidget(QWidget):
         self.cursor_x = 0
         self.cursor_y = 0
 
-        self.font = self.new_font()
+        self.font = self.get_font()
 
         self.fm = QFontMetricsF(self.font)
         self.char_height = self.fm.height()
@@ -145,29 +149,22 @@ class QTerminalWidget(QWidget):
                 QFontDatabase.SystemFont.FixedFont
             ).family()
 
-    def new_font(self, style=[]):
-        font = QFont()
-        font.setFamily(self.font_family)
-        font.setPixelSize(self.font_size)
-
-        if "bold" in style:
-            font.setBold(True)
-        if "underscore" in style:
-            font.setUnderline(True)
-        if "italics" in style:
-            font.setItalic(True)
-        if "strikethrough" in style:
-            font.setStrikeOut(True)
-
-        return font
-
-    def get_font(self, style: list[str] = []) -> QFont:
+    def get_font(self, style: list[StyleType] = []) -> QFont:
         id = str(style)
         if id in self.fonts:
             return self.fonts[id]
 
-        font = self.new_font(style)
+        font = QFont()
+        font.setFamily(self.font_family)
+        font.setPixelSize(self.font_size)
+
+        if StyleType.Bold in style:
+            font.setBold(True)
+        if StyleType.Italics in style:
+            font.setItalic(True)
+
         self.fonts[id] = font
+
         return font
 
     def get_color(self, color_name: str) -> QColor | str:
@@ -266,6 +263,7 @@ class QTerminalWidget(QWidget):
         pre_char: pyte.screens.Char,
         start_x: float,
         start_y: float,
+        is_two_width: bool,
     ):
         fg = "black" if pre_char.fg == "default" else pre_char.fg
         bg = "white" if pre_char.bg == "default" else pre_char.bg
@@ -280,13 +278,9 @@ class QTerminalWidget(QWidget):
 
         style = []
         if pre_char.bold:
-            style.append("bold")
+            style.append(StyleType.Bold)
         if pre_char.italics:
-            style.append("italics")
-        if pre_char.underscore:
-            style.append("underscore")
-        if pre_char.strikethrough:
-            style.append("strikethrough")
+            style.append(StyleType.Italics)
 
         rect = QRectF(start_x, start_y, text_width, self.char_height)
 
@@ -296,6 +290,28 @@ class QTerminalWidget(QWidget):
         painter.setFont(self.get_font(style))
         painter.setPen(self.get_pen(fg))
         painter.drawText(rect, align, text)
+
+        if pre_char.underscore:
+            self.draw_line(painter, start_x, start_y, text_width, LineType.Underline)
+        if pre_char.strikethrough:
+            self.draw_line(painter, start_x, start_y, text_width, LineType.StrikeOut)
+
+    def draw_line(
+        self,
+        painter: QPainter,
+        start_x: float,
+        start_y: float,
+        width: float,
+        line_type: LineType,
+    ):
+        if line_type == LineType.Underline:
+            start_y += self.char_height - self.char_height / 10
+            line = QLineF(start_x, start_y, start_x + width, start_y)
+            painter.drawLine(line)
+        elif line_type == LineType.StrikeOut:
+            start_y += self.char_height / 2
+            line = QLineF(start_x, start_y, start_x + width, start_y)
+            painter.drawLine(line)
 
     def paint_line_text(self, painter: QPainter, line_num: int):
         start_x = 0
@@ -333,7 +349,15 @@ class QTerminalWidget(QWidget):
 
             text_width = self.get_text_width(same_text, real_is_two_width)
 
-            self.draw_text(painter, same_text, text_width, pre_char, start_x, start_y)
+            self.draw_text(
+                painter,
+                same_text,
+                text_width,
+                pre_char,
+                start_x,
+                start_y,
+                real_is_two_width,
+            )
 
             start_x += text_width
 
