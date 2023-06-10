@@ -32,26 +32,26 @@ Recommend use Nerd font to render icon in terminal."
   :group 'eaf-pyqterminal)
 
 (defcustom eaf-pyqterminal-refresh-ms 17
-  "Maybe need to set this variable when you change repeat rate."
+  "Maybe you need to set this variable when you change the repeat rate."
   :type 'integer
   :group 'eaf-pyqterminal)
 
 (defcustom eaf-pyqterminal-cursor-type "box"
   "Type of cursor.
 
-You can set this variable to `box', `bar' and `hbar'"
+You can set this variable to `box', `bar' and `hbar'."
   :type 'string
   :group 'eaf-pyqterminal)
 
 (defcustom eaf-pyqterminal-cursor-size 2
-  "Setting cursor size for the cursor type of `bar' or `hbar'."
+  "Setting the cursor size for the `bar' or `hbar' cursor types."
   :type 'integer
   :group 'eaf-pyqterminal)
 
 (defcustom eaf-pyqterminal-cursor-alpha -1
   "Alpha of cursor.
 
-If alpha < 0, don't set alpha for cursor"
+If alpha < 0, don't set alpha for cursor."
   :type 'integer
   :group 'eaf-pyqterminal)
 
