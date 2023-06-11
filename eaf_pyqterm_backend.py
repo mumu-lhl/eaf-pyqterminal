@@ -55,6 +55,10 @@ class BaseBackend(object):
     def full_dirty(self):
         self.screen.dirty.update(range(self.screen.lines))
 
+    @property
+    def is_in_history(self):
+        return bool(self.screen.history.bottom)
+
     def scroll_down(self, ratio):
         if self.screen.history.position > self.screen.lines and self.screen.history.top:
             mid = min(len(self.screen.history.top),

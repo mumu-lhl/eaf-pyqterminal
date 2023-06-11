@@ -367,7 +367,7 @@ class QTerminalWidget(QWidget):
     def paint_cursor(self, painter: QPainter):
         cursor = self.backend.cursor()
 
-        if cursor.hidden:
+        if cursor.hidden or self.backend.is_in_history:
             return
 
         self.cursor_x = cursor.x
