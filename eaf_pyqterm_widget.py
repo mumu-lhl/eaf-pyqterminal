@@ -457,11 +457,15 @@ class QTerminalWidget(QWidget):
 
     def wheelEvent(self, event: QWheelEvent):
         y = event.angleDelta().y()
+
+        ratio = abs(y) / 200
+
         if y > 0:
-            self.backend.screen.prev_page()
+            self.backend.scroll_down(ratio)
         else:
-            self.backend.screen.next_page()
-            self.update()
+            self.backend.scroll_up(ratio)
+
+        self.update()
 
     @interactive
     def yank_text(self):
