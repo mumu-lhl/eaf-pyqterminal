@@ -236,7 +236,6 @@ class QTerminalWidget(QWidget):
         # dirty will change when traversing
         for _ in range(len(screen.dirty)):
             line_num = screen.dirty.pop()
-            print(line_num, self.rows)
             self.paint_line_text(painter, line_num)
 
     def check_draw_together(
