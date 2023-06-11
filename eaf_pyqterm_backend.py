@@ -53,7 +53,7 @@ class BaseBackend(object):
         self.buffer_stream = QTerminalStream(self.buffer_screen)
 
     def full_dirty(self):
-        self.screen.dirty = set(range(self.screen.lines))
+        self.screen.dirty.update(range(self.screen.lines))
 
     def scroll_down(self, ratio):
         if self.screen.history.position > self.screen.lines and self.screen.history.top:

@@ -208,7 +208,7 @@ class QTerminalWidget(QWidget):
         self.columns, self.rows = self.pixel_to_position(width, height)
         self.backend.resize(self.columns, self.rows)
         self.pixmap = QPixmap(width, height)
-        self.paint_full_pixmap()
+        self.paint_pixmap()
 
     def timerEvent(self, event):
         cursor = self.backend.cursor()
@@ -219,7 +219,7 @@ class QTerminalWidget(QWidget):
         ):
             return
 
-        self.paint_part_pixmap()
+        self.paint_pixmap()
         self.update()
 
         title = self.backend.get_title()
@@ -227,11 +227,7 @@ class QTerminalWidget(QWidget):
             self.title = title
             self.change_title(f"Term [{title}]")
 
-    def paint_full_text(self, painter: QPainter):
-        for line_num in range(self.rows):
-            self.paint_line_text(painter, line_num)
-
-    def paint_dirty_text(self, painter: QPainter):
+    def paint_text(self, painter: QPainter):
         screen = self.backend.screen
 
         # redraw the old cursor line
@@ -240,6 +236,7 @@ class QTerminalWidget(QWidget):
         # dirty will change when traversing
         for _ in range(len(screen.dirty)):
             line_num = screen.dirty.pop()
+            print(line_num, self.rows)
             self.paint_line_text(painter, line_num)
 
     def check_draw_together(
@@ -405,14 +402,9 @@ class QTerminalWidget(QWidget):
         painter.setBrush(brush)
         painter.drawRect(QRectF(cursor_x, cursor_y, cursor_width, cursor_height))
 
-    def paint_full_pixmap(self):
+    def paint_pixmap(self):
         painter = QPainter(self.pixmap)
-        self.paint_full_text(painter)
-        self.paint_cursor(painter)
-
-    def paint_part_pixmap(self):
-        painter = QPainter(self.pixmap)
-        self.paint_dirty_text(painter)
+        self.paint_text(painter)
         self.paint_cursor(painter)
 
     def get_text_width(self, text: str, is_two_width=False):
