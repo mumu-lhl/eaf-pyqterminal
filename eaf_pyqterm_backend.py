@@ -47,12 +47,13 @@ class BaseBackend(object):
         self.width = width
         self.height = height
 
-        self.all_line = {num for num in range(height)}
-
         self.screen = QTerminalScreen(width, height, history=99999)
         self.buffer_screen = QTerminalScreen(width, height, history=99999)
         self.stream = QTerminalStream(self.screen)
         self.buffer_stream = QTerminalStream(self.buffer_screen)
+
+    def full_dirty(self):
+        self.screen.dirty = set(range(self.screen.lines))
 
     def scroll_down(self, ratio):
         if self.screen.history.position > self.screen.lines and self.screen.history.top:
@@ -70,7 +71,7 @@ class BaseBackend(object):
             for y in range(mid - 1, -1, -1):
                 self.screen.buffer[y] = self.screen.history.top.pop()
 
-            self.screen.dirty = set(range(self.screen.lines))
+            self.full_dirty()
 
     def scroll_up(self, ratio):
         if self.screen.history.position < self.screen.history.size and self.screen.history.bottom:
@@ -86,7 +87,7 @@ class BaseBackend(object):
             for y in range(self.screen.lines - mid, self.screen.lines):
                 self.screen.buffer[y] = self.screen.history.bottom.popleft()
 
-            self.screen.dirty = set(range(self.screen.lines))
+            self.full_dirty()
 
     def cursor(self):
         return self.screen.cursor
@@ -94,8 +95,6 @@ class BaseBackend(object):
     def resize(self, width, height):
         self.width = width
         self.height = height
-
-        self.all_line = {num for num in range(height)}
 
         self.screen.resize(columns=width, lines=height)
         self.buffer_screen.resize(columns=width, lines=height)
@@ -123,7 +122,7 @@ class BaseBackend(object):
         self.screen, self.buffer_screen = self.buffer_screen, self.screen
         self.stream, self.buffer_stream = self.buffer_stream, self.stream
         self.buffer_screen.reset()
-        self.screen.dirty.update(self.all_line)
+        self.full_dirty()
 
     def get_title(self):
         return self.screen.title or self.buffer_screen.title
