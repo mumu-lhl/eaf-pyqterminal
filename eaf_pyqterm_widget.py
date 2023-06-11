@@ -365,41 +365,43 @@ class QTerminalWidget(QWidget):
                 same_text = char.data
 
     def paint_cursor(self, painter: QPainter):
-        cursor = self.backend.cursor()
+        # Don't draw cursor when current position is less than the bottom position.
+        if self.backend.screen.history.bottom.maxlen <= self.backend.screen.history.position:
+            cursor = self.backend.cursor()
 
-        if cursor.hidden:
-            return
+            if cursor.hidden:
+                return
 
-        self.cursor_x = cursor.x
-        self.cursor_y = cursor.y
+            self.cursor_x = cursor.x
+            self.cursor_y = cursor.y
 
-        screen = self.backend.screen
-        line = screen.buffer[cursor.y]
-        text_width = 0
-        for col in range(cursor.x):
-            char = line[col].data
-            if char == "":
-                continue
-            text_width += self.get_text_width(char, line[col + 1].data == "")
+            screen = self.backend.screen
+            line = screen.buffer[cursor.y]
+            text_width = 0
+            for col in range(cursor.x):
+                char = line[col].data
+                if char == "":
+                    continue
+                text_width += self.get_text_width(char, line[col + 1].data == "")
 
-        cursor_width = self.char_width
-        cursor_height = self.char_height
-        cursor_x = text_width
-        cursor_y = self.cursor_y * self.char_height
-        if self.cursor_type == "bar":
-            cursor_height = self.cursor_size
-            cursor_y += self.char_height - cursor_height
-        elif self.cursor_type == "hbar":
-            cursor_width = self.cursor_size
+            cursor_width = self.char_width
+            cursor_height = self.char_height
+            cursor_x = text_width
+            cursor_y = self.cursor_y * self.char_height
+            if self.cursor_type == "bar":
+                cursor_height = self.cursor_size
+                cursor_y += self.char_height - cursor_height
+            elif self.cursor_type == "hbar":
+                cursor_width = self.cursor_size
 
-        bcol = QColor(self.cursor_color)
-        if self.cursor_alpha >= 0:
-            bcol.setAlpha(self.cursor_alpha)
-        brush = QBrush(bcol)
+            bcol = QColor(self.cursor_color)
+            if self.cursor_alpha >= 0:
+                bcol.setAlpha(self.cursor_alpha)
+            brush = QBrush(bcol)
 
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(brush)
-        painter.drawRect(QRectF(cursor_x, cursor_y, cursor_width, cursor_height))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(brush)
+            painter.drawRect(QRectF(cursor_x, cursor_y, cursor_width, cursor_height))
 
     def paint_pixmap(self):
         painter = QPainter(self.pixmap)
