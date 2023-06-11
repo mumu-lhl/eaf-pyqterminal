@@ -27,6 +27,7 @@ import struct
 import sys
 import termios
 import threading
+import math
 
 if platform == "Windows":
     from winpty import PtyProcess as pty
@@ -52,6 +53,40 @@ class BaseBackend(object):
         self.buffer_screen = QTerminalScreen(width, height, history=99999)
         self.stream = QTerminalStream(self.screen)
         self.buffer_stream = QTerminalStream(self.buffer_screen)
+
+    def scroll_down(self, ratio):
+        if self.screen.history.position > self.screen.lines and self.screen.history.top:
+            mid = min(len(self.screen.history.top),
+                      int(math.ceil(self.screen.lines * ratio)))
+
+            self.screen.history.bottom.extendleft(
+                self.screen.buffer[y]
+                for y in range(self.screen.lines - 1, self.screen.lines - mid - 1, -1))
+            self.screen.history = self.screen.history \
+                ._replace(position=self.screen.history.position - mid)
+
+            for y in range(self.screen.lines - 1, mid - 1, -1):
+                self.screen.buffer[y] = self.screen.buffer[y - mid]
+            for y in range(mid - 1, -1, -1):
+                self.screen.buffer[y] = self.screen.history.top.pop()
+
+            self.screen.dirty = set(range(self.screen.lines))
+
+    def scroll_up(self, ratio):
+        if self.screen.history.position < self.screen.history.size and self.screen.history.bottom:
+            mid = min(len(self.screen.history.bottom),
+                      int(math.ceil(self.screen.lines * ratio)))
+
+            self.screen.history.top.extend(self.screen.buffer[y] for y in range(mid))
+            self.screen.history = self.screen.history \
+                ._replace(position=self.screen.history.position + mid)
+
+            for y in range(self.screen.lines - mid):
+                self.screen.buffer[y] = self.screen.buffer[y + mid]
+            for y in range(self.screen.lines - mid, self.screen.lines):
+                self.screen.buffer[y] = self.screen.history.bottom.popleft()
+
+            self.screen.dirty = set(range(self.screen.lines))
 
     def cursor(self):
         return self.screen.cursor
