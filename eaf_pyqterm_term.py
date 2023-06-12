@@ -23,7 +23,7 @@ from core.utils import get_emacs_vars
 from playsound import playsound
 from PyQt6.QtCore import QThread
 from pyte.screens import HistoryScreen
-from pyte.streams import ByteStream
+from pyte.streams import Stream
 
 bell_sound_threads = []
 
@@ -38,9 +38,11 @@ class BellThread(QThread):
         playsound(self.bell_sound_path)
 
 
-class QTerminalStream(ByteStream):
+class QTerminalStream(Stream):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.use_utf8 = False
 
 
 class QTerminalScreen(HistoryScreen):
