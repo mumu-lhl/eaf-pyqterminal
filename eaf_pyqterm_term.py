@@ -24,6 +24,7 @@ from playsound import playsound
 from PyQt6.QtCore import QThread
 from pyte.screens import HistoryScreen
 from pyte.streams import Stream
+import math
 
 bell_sound_threads = []
 
@@ -49,6 +50,9 @@ class QTerminalScreen(HistoryScreen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.base = 0
+        self.in_history = False
+
     def write_process_input(self, data: str) -> None:
         self.send(data)
 
@@ -56,3 +60,39 @@ class QTerminalScreen(HistoryScreen):
         thread = BellThread()
         bell_sound_threads.append(thread)
         thread.start()
+
+    def exit_history(self):
+        if self.in_history:
+            self.base = len(self.history.top)
+            self.in_history = False
+            self.dirty.update(range(self.lines))
+
+    def scroll_up(self, ratio):
+        self.in_history = True
+
+        base = self.base - int(math.ceil(self.lines * ratio))
+        self.base = 0 if base < 0 else base
+
+        self.dirty.update(range(self.lines))
+
+    def scroll_down(self, ratio):
+        base = self.base + int(math.ceil(self.lines * ratio))
+
+        if base >= len(self.history.top):
+            base = len(self.history.top)
+            self.in_history = False
+
+        self.base = base
+
+        self.dirty.update(range(self.lines))
+
+    def get_line(self, line_num):
+        if not self.in_history:
+            self.base = len(self.history.top)
+
+        history_line_num = self.base + line_num
+
+        if history_line_num <= len(self.history.top) - 1:
+            return self.history.top[history_line_num]
+        else:
+            return self.buffer[self.base - len(self.history.top) + line_num]

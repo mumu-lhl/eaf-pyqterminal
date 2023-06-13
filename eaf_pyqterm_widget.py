@@ -317,7 +317,7 @@ class QTerminalWidget(QWidget):
         clear_rect = QRectF(start_x, start_y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
-        line = screen.buffer[line_num]
+        line = screen.get_line(line_num)
 
         pre_char = pyte.screens.Char("")
         is_two_width = False
@@ -366,15 +366,15 @@ class QTerminalWidget(QWidget):
 
     def paint_cursor(self, painter: QPainter):
         cursor = self.backend.cursor()
+        screen = self.backend.screen
 
-        if cursor.hidden or self.backend.is_in_history:
+        if cursor.hidden or screen.in_history:
             return
 
         self.cursor_x = cursor.x
         self.cursor_y = cursor.y
 
-        screen = self.backend.screen
-        line = screen.buffer[cursor.y]
+        line = screen.get_line(cursor.y)
         text_width = 0
         for col in range(cursor.x):
             char = line[col].data
@@ -425,6 +425,8 @@ class QTerminalWidget(QWidget):
         modifier = event.modifiers()
         s = KEY_DICT.get(key)
 
+        self.backend.screen.exit_history()
+
         if (text or s) and modifier == Qt.KeyboardModifier.ControlModifier:
             # 'a' => '\x01', 'A' => '\x01'
             text = chr(ord(text.lower()) - 96)
@@ -452,9 +454,9 @@ class QTerminalWidget(QWidget):
         ratio = abs(y) / 200
 
         if y > 0:
-            self.backend.scroll_down(ratio)
+            self.backend.screen.scroll_up(ratio)
         else:
-            self.backend.scroll_up(ratio)
+            self.backend.screen.scroll_down(ratio)
 
         self.update()
 

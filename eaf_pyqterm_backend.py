@@ -27,7 +27,6 @@ import struct
 import sys
 import termios
 import threading
-import math
 
 if platform == "Windows":
     from winpty import PtyProcess as pty
@@ -52,46 +51,9 @@ class BaseBackend(object):
         self.stream = QTerminalStream(self.screen)
         self.buffer_stream = QTerminalStream(self.buffer_screen)
 
-    def full_dirty(self):
-        self.screen.dirty.update(range(self.screen.lines))
-
     @property
     def is_in_history(self):
         return bool(self.screen.history.bottom)
-
-    def scroll_down(self, ratio):
-        if self.screen.history.position > self.screen.lines and self.screen.history.top:
-            mid = min(len(self.screen.history.top),
-                      int(math.ceil(self.screen.lines * ratio)))
-
-            self.screen.history.bottom.extendleft(
-                self.screen.buffer[y]
-                for y in range(self.screen.lines - 1, self.screen.lines - mid - 1, -1))
-            self.screen.history = self.screen.history \
-                ._replace(position=self.screen.history.position - mid)
-
-            for y in range(self.screen.lines - 1, mid - 1, -1):
-                self.screen.buffer[y] = self.screen.buffer[y - mid]
-            for y in range(mid - 1, -1, -1):
-                self.screen.buffer[y] = self.screen.history.top.pop()
-
-            self.full_dirty()
-
-    def scroll_up(self, ratio):
-        if self.screen.history.position < self.screen.history.size and self.screen.history.bottom:
-            mid = min(len(self.screen.history.bottom),
-                      int(math.ceil(self.screen.lines * ratio)))
-
-            self.screen.history.top.extend(self.screen.buffer[y] for y in range(mid))
-            self.screen.history = self.screen.history \
-                ._replace(position=self.screen.history.position + mid)
-
-            for y in range(self.screen.lines - mid):
-                self.screen.buffer[y] = self.screen.buffer[y + mid]
-            for y in range(self.screen.lines - mid, self.screen.lines):
-                self.screen.buffer[y] = self.screen.history.bottom.popleft()
-
-            self.full_dirty()
 
     def cursor(self):
         return self.screen.cursor
@@ -126,7 +88,7 @@ class BaseBackend(object):
         self.screen, self.buffer_screen = self.buffer_screen, self.screen
         self.stream, self.buffer_stream = self.buffer_stream, self.stream
         self.buffer_screen.reset()
-        self.full_dirty()
+        self.screen.dirty.update(range(self.screen.lines))
 
     def get_title(self):
         return self.screen.title or self.buffer_screen.title
