@@ -78,7 +78,7 @@ class BaseBackend(object):
             self.exit_buffer_screen()
             data = exit[1]
 
-        self.stream.feed(data.decode())
+        self.stream.feed(data)
 
     def into_buffer_screen(self):
         self.screen, self.buffer_screen = self.buffer_screen, self.screen
