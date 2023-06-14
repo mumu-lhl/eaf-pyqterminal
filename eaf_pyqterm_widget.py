@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import math
 import os
 import sys
 from enum import Enum
@@ -452,11 +453,12 @@ class QTerminalWidget(QWidget):
         y = event.angleDelta().y()
 
         ratio = abs(y) / 200
+        line_num = int(math.ceil(self.rows * ratio))
 
         if y > 0:
-            self.backend.screen.scroll_up(ratio)
+            self.backend.screen.scroll_up(line_num)
         else:
-            self.backend.screen.scroll_down(ratio)
+            self.backend.screen.scroll_down(line_num)
 
         self.update()
 
@@ -465,3 +467,27 @@ class QTerminalWidget(QWidget):
         text = get_emacs_func_result("eaf-pyqterminal-get-clipboard", ())
         if isinstance(text, str):
             self.send(text)
+
+    @interactive
+    def scroll_up(self):
+        self.backend.screen.scroll_up(1)
+
+    @interactive
+    def scroll_down(self):
+        self.backend.screen.scroll_down(1)
+
+    @interactive
+    def scroll_up_page(self):
+        self.backend.screen.scroll_up(self.rows)
+
+    @interactive
+    def scroll_down_page(self):
+        self.backend.screen.scroll_down(self.rows)
+
+    @interactive
+    def scroll_to_begin(self):
+        self.backend.screen.scroll_up(self.backend.screen.base)
+
+    @interactive
+    def scroll_to_bottom(self):
+        self.backend.screen.exit_history()

@@ -19,12 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
 from core.utils import get_emacs_vars
 from playsound import playsound
 from PyQt6.QtCore import QThread
 from pyte.screens import HistoryScreen
 from pyte.streams import Stream
-import math
 
 bell_sound_threads = []
 
@@ -67,16 +67,16 @@ class QTerminalScreen(HistoryScreen):
             self.in_history = False
             self.dirty.update(range(self.lines))
 
-    def scroll_up(self, ratio):
+    def scroll_up(self, line_num):
         self.in_history = True
 
-        base = self.base - int(math.ceil(self.lines * ratio))
+        base = self.base - line_num
         self.base = 0 if base < 0 else base
 
         self.dirty.update(range(self.lines))
 
-    def scroll_down(self, ratio):
-        base = self.base + int(math.ceil(self.lines * ratio))
+    def scroll_down(self, line_num):
+        base = self.base + line_num
 
         if base >= len(self.history.top):
             base = len(self.history.top)
