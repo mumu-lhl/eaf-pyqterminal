@@ -137,6 +137,7 @@ class QTerminalWidget(QWidget):
         self.char_height = self.fm.height()
         self.char_width = self.get_text_width("W")
         self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
+        self.underline_pos = self.fm.underlinePos()
 
         self.backend = backend.PtyBackend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
@@ -302,7 +303,7 @@ class QTerminalWidget(QWidget):
         line_type: LineType,
     ):
         if line_type == LineType.Underline:
-            start_y += self.char_height - self.char_height / 10
+            start_y += self.char_height - self.underline_pos
             line = QLineF(start_x, start_y, start_x + width, start_y)
             painter.drawLine(line)
         elif line_type == LineType.StrikeOut:
