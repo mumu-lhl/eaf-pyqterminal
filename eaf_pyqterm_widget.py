@@ -22,6 +22,7 @@
 import math
 import os
 import sys
+import re
 from enum import Enum
 
 import pyte
@@ -228,6 +229,16 @@ class QTerminalWidget(QWidget):
         if self.title != title:
             self.title = title
             self.change_title(f"Term [{title}]")
+
+            self.try_change_default_directory(title)
+
+    def try_change_default_directory(self, title):
+        if ":" in title:
+            path = os.path.expanduser(title.split(":")[1])
+
+            if os.path.exists(path):
+                directory = path if os.path.isdir(path) else os.path.dirname(path)
+                eval_in_emacs('eaf--change-default-directory', [self.buffer_id, directory])
 
     def paint_text(self, painter: QPainter):
         screen = self.backend.screen
