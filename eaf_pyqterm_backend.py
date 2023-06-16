@@ -167,7 +167,7 @@ class Pty:
             pass
 
 
-class PtyBackend(BaseBackend):  # noqa: E999
+class PtyBackend(BaseBackend):
     def __init__(self, width, height):
         super().__init__(width, height)
 
