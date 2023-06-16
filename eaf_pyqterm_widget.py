@@ -22,7 +22,6 @@
 import math
 import os
 import sys
-import re
 from enum import Enum
 
 import pyte
