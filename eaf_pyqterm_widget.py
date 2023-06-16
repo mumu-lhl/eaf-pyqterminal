@@ -232,12 +232,15 @@ class QTerminalWidget(QWidget):
             self.try_change_default_directory(title)
 
     def try_change_default_directory(self, title):
-        if ":" in title:
-            path = os.path.expanduser(title.split(":")[1])
+        try:
+            if ":" in title:
+                path = os.path.expanduser(title.split(":")[1])
 
-            if os.path.exists(path):
-                directory = path if os.path.isdir(path) else os.path.dirname(path)
-                eval_in_emacs('eaf--change-default-directory', [self.buffer_id, directory])
+                if os.path.exists(path):
+                    directory = path if os.path.isdir(path) else os.path.dirname(path)
+                    eval_in_emacs('eaf--change-default-directory', [self.buffer_id, directory])
+        except:
+            pass
 
     def paint_text(self, painter: QPainter):
         screen = self.backend.screen
