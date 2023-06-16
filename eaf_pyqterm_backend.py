@@ -27,6 +27,7 @@ import struct
 import sys
 import termios
 import threading
+import psutil
 
 if platform == "Windows":
     from winpty import PtyProcess as pty
@@ -158,8 +159,15 @@ class Pty:
     def _resize_winpty(self, width, height):
         self.pty.set_size(width, height)
 
+    def getcwd(self):
+        pid = self.pty.pid if platform == "Windows" else self.p_pid
+        try:
+            return psutil.Process(pid).cwd()
+        except:
+            pass
 
-class PtyBackend(BaseBackend):
+
+class PtyBackend(BaseBackend):  # noqa: E999
     def __init__(self, width, height):
         super().__init__(width, height)
 
@@ -197,3 +205,6 @@ class PtyBackend(BaseBackend):
         super().resize(width, height)
 
         self.pty.resize(width, height)
+
+    def getcwd(self):
+        return self.pty.getcwd()

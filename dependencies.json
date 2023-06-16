@@ -2,16 +2,19 @@
   "pip": {
     "linux": [
       "playsound",
-      "pyte"
+      "pyte",
+      "psutil"
     ],
     "win32": [
       "playsound",
       "pyte",
-      "pywinpty"
+      "pywinpty",
+      "psutil"
     ],
     "darwin": [
       "playsound",
-      "pyte"
+      "pyte",
+      "psutil"
     ]
   }
 }

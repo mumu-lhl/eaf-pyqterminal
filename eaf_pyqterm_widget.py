@@ -126,6 +126,7 @@ class QTerminalWidget(QWidget):
         self.pens["default"] = QPen(self.colors["foreground"])
         self.brushes["default"] = QBrush(self.colors["background"])
 
+        self.directory = ""
         self.title = ""
 
         self.cursor_x = 0
@@ -225,22 +226,14 @@ class QTerminalWidget(QWidget):
         self.update()
 
         title = self.backend.get_title()
-        if self.title != title:
+        if title != self.title:
             self.title = title
             self.change_title(f"Term [{title}]")
 
-            self.try_change_default_directory(title)
-
-    def try_change_default_directory(self, title):
-        try:
-            if ":" in title:
-                path = os.path.expanduser(title.split(":")[1])
-
-                if os.path.exists(path):
-                    directory = path if os.path.isdir(path) else os.path.dirname(path)
-                    eval_in_emacs('eaf--change-default-directory', [self.buffer_id, directory])
-        except:
-            pass
+        directory = self.backend.getcwd()
+        if directory != self.directory:
+            self.directory = directory
+            eval_in_emacs("eaf--change-default-directory", [self.buffer_id, directory])
 
     def paint_text(self, painter: QPainter):
         screen = self.backend.screen
