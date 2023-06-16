@@ -41,6 +41,7 @@ class AppBuffer(Buffer):
         backend.start_directory = arguments_dict["directory"]
 
         term = widget.QTerminalWidget()
+        term.buffer_id = buffer_id
         term.change_title = self.change_title
         term.backend.close_buffer = self.close_buffer
 
