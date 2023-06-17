@@ -66,7 +66,8 @@ class QTerminalScreen(HistoryScreen):
             self.dirty.update(range(self.lines))
 
     def scroll_up(self, line_num):
-        self.in_history = True
+        if self.base != 0:
+            self.in_history = True
 
         base = self.base - line_num
         self.base = 0 if base < 0 else base
