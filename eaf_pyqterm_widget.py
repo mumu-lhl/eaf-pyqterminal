@@ -20,10 +20,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
-import os
-import sys
 from enum import Enum
 
+import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
@@ -41,10 +40,6 @@ from PyQt6.QtGui import (
     QWheelEvent,
 )
 from PyQt6.QtWidgets import QWidget
-
-sys.path.append(os.path.dirname(__file__))
-
-import eaf_pyqterm_backend as backend
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -142,7 +137,7 @@ class QTerminalWidget(QWidget):
         self.underline_pos = self.fm.underlinePos()
         self.set_offset()
 
-        self.backend = backend.PtyBackend(self.columns, self.rows)
+        self.backend = backend.Backend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
 
         self.startTimer(self.refresh_ms)
@@ -223,7 +218,7 @@ class QTerminalWidget(QWidget):
         self.paint_pixmap()
 
     def timerEvent(self, event):
-        cursor = self.backend.cursor()
+        cursor = self.backend.cursor
         if (
             not self.backend.screen.dirty
             and self.cursor_x == cursor.x
@@ -234,7 +229,7 @@ class QTerminalWidget(QWidget):
         self.paint_pixmap()
         self.update()
 
-        title = self.backend.get_title()
+        title = self.backend.title
         if title != self.title:
             self.title = title
             self.change_title(f"Term [{title}]")
@@ -382,7 +377,7 @@ class QTerminalWidget(QWidget):
                 same_text = char.data
 
     def paint_cursor(self, painter: QPainter):
-        cursor = self.backend.cursor()
+        cursor = self.backend.cursor
         screen = self.backend.screen
 
         if cursor.hidden or screen.in_history:

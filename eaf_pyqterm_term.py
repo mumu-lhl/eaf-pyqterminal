@@ -40,9 +40,6 @@ class QTerminalScreen(HistoryScreen):
         self.base = 0
         self.in_history = False
 
-    def write_process_input(self, data: str) -> None:
-        self.send(data)
-
     def bell(self):
         playsound(bell_sound_path, False)
 
