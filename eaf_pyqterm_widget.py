@@ -205,10 +205,13 @@ class QTerminalWidget(QWidget):
     def pixel_to_position(self, x, y):
         column = int(x / self.char_width)
         row = int(y / self.char_height)
+        row = row if row > 0 else 1
         return column, row
 
     def set_offset(self):
-        self.char_height = (self.height() - self.rows * self.real_char_height) / self.rows + self.real_char_height
+        self.char_height = (
+            self.height() - self.rows * self.real_char_height
+        ) / self.rows + self.real_char_height
 
     def resizeEvent(self, event):
         width = self.width()
@@ -413,7 +416,9 @@ class QTerminalWidget(QWidget):
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(brush)
-        painter.drawRect(QRectF(cursor_x, cursor_y, cursor_width, self.real_char_height))
+        painter.drawRect(
+            QRectF(cursor_x, cursor_y, cursor_width, self.real_char_height)
+        )
 
     def paint_pixmap(self):
         painter = QPainter(self.pixmap)
