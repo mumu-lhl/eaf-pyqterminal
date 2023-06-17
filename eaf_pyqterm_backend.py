@@ -44,9 +44,6 @@ QTerminalStream = term.QTerminalStream
 
 class BaseBackend(object):
     def __init__(self, width, height):
-        self.width = width
-        self.height = height
-
         self.screen = QTerminalScreen(width, height, history=99999)
         self.buffer_screen = QTerminalScreen(width, height, history=99999)
         self.stream = QTerminalStream(self.screen)
@@ -60,11 +57,8 @@ class BaseBackend(object):
         return self.screen.cursor
 
     def resize(self, width, height):
-        self.width = width
-        self.height = height
-
-        self.screen.resize(columns=width, lines=height)
-        self.buffer_screen.resize(columns=width, lines=height)
+        self.screen.resize(height, width)
+        self.buffer_screen.resize(height, width)
 
     def write_to_screen(self, data: bytes):
         into = data.split(b"\x1b[?1049h")
@@ -170,9 +164,6 @@ class Pty:
 class PtyBackend(BaseBackend):
     def __init__(self, width, height):
         super().__init__(width, height)
-
-        self.width = width
-        self.height = height
 
         self.screen.send = self.send
         self.buffer_screen.send = self.send

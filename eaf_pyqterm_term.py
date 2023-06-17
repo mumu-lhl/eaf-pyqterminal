@@ -27,16 +27,15 @@ from pyte.screens import HistoryScreen
 from pyte.streams import ByteStream
 
 bell_sound_threads = []
+bell_sound_path = get_emacs_vars(("eaf-pyqterminal-bell-sound-path",))[0]
 
 
 class BellThread(QThread):
     def __init__(self):
         QThread.__init__(self)
 
-        self.bell_sound_path = get_emacs_vars(("eaf-pyqterminal-bell-sound-path",))[0]
-
     def run(self):
-        playsound(self.bell_sound_path)
+        playsound(bell_sound_path)
 
 
 class QTerminalStream(ByteStream):
