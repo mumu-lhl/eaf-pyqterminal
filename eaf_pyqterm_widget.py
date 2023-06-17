@@ -199,7 +199,7 @@ class QTerminalWidget(QWidget):
 
     def pixel_to_position(self, x, y):
         column = int(x / self.char_width)
-        row = int(y / self.char_height)
+        row = int(y / self.real_char_height)
         row = row if row > 0 else 1
         return column, row
 
