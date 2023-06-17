@@ -22,20 +22,10 @@
 
 from core.utils import get_emacs_vars
 from playsound import playsound
-from PyQt6.QtCore import QThread
 from pyte.screens import HistoryScreen
 from pyte.streams import ByteStream
 
-bell_sound_threads = []
 bell_sound_path = get_emacs_vars(("eaf-pyqterminal-bell-sound-path",))[0]
-
-
-class BellThread(QThread):
-    def __init__(self):
-        QThread.__init__(self)
-
-    def run(self):
-        playsound(bell_sound_path)
 
 
 class QTerminalStream(ByteStream):
@@ -54,9 +44,7 @@ class QTerminalScreen(HistoryScreen):
         self.send(data)
 
     def bell(self):
-        thread = BellThread()
-        bell_sound_threads.append(thread)
-        thread.start()
+        playsound(bell_sound_path, False)
 
     def exit_history(self):
         if self.in_history:
