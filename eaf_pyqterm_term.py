@@ -95,3 +95,16 @@ class QTerminalScreen(HistoryScreen):
             return self.history.top[history_line_num]
         else:
             return self.buffer[self.base - len(self.history.top) + line_num]
+
+    # https://github.com/selectel/pyte/blob/a1c089e45b5d0eef0f3450984350254248f02519/pyte/screens.py#L286
+    def resize(self, lines=None, columns=None):
+        lines = lines or self.lines
+        columns = columns or self.columns
+
+        if lines == self.lines and columns == self.columns:
+            return  # No changes.
+
+        self.dirty.update(range(lines))
+
+        self.lines, self.columns = lines, columns
+        self.set_margins()
