@@ -263,6 +263,7 @@ class QTerminalWidget(QWidget):
         start_x: float,
         start_y: float,
         is_two_width: bool,
+        in_last_line: bool,
     ):
         fg = "black" if pre_char.fg == "default" else pre_char.fg
         bg = "white" if pre_char.bg == "default" else pre_char.bg
@@ -285,6 +286,12 @@ class QTerminalWidget(QWidget):
 
         if bg != "default":
             painter.fillRect(rect, self.get_brush(bg))
+
+            if in_last_line:
+                extra_start_y = start_y + self.char_height
+                height = self.height() - extra_start_y
+                extra_rect = QRectF(start_x, extra_start_y, text_width, height)
+                painter.fillRect(extra_rect, self.get_brush(bg))
 
         painter.setFont(self.get_font(style))
         painter.setPen(self.get_pen(fg))
@@ -317,7 +324,10 @@ class QTerminalWidget(QWidget):
         start_y = line_num * self.char_height
         screen = self.backend.screen
 
-        clear_rect = QRectF(start_x, start_y, self.width(), self.char_height)
+        in_last_line = line_num == self.rows - 1
+
+        height = self.height() - start_y if in_last_line else self.char_height
+        clear_rect = QRectF(start_x, start_y, self.width(), height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
         line = screen.get_line(line_num)
@@ -356,6 +366,7 @@ class QTerminalWidget(QWidget):
                 start_x,
                 start_y,
                 real_is_two_width,
+                in_last_line,
             )
 
             start_x += text_width
