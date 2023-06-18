@@ -85,10 +85,10 @@ class QTerminalScreen(HistoryScreen):
         lines = lines or self.lines
         columns = columns or self.columns
 
+        self.dirty.update(range(lines))
+
         if lines == self.lines and columns == self.columns:
             return  # No changes.
-
-        self.dirty.update(range(lines))
 
         count = self.lines - lines
         if count > 0 and self.cursor.y >= lines:
