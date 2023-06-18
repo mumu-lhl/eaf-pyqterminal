@@ -99,17 +99,6 @@ class QTerminalScreen(HistoryScreen):
                     self.history.top.append(self.buffer.pop(y))
                 else:
                     self.buffer[y - count] = self.buffer.pop(y)
-        elif count < 0:
-            top_length = len(self.history.top)
-            count = -count
-            count = top_length if top_length < count else count
-
-            for y in range(self.lines + count - 1, -1, -1):
-                index = y - count
-                if index >= 0:
-                    self.buffer[y] = self.buffer[index]
-                else:
-                    self.buffer[y] = self.history.top[index]
 
         if columns < self.columns:
             for line in self.buffer.values():
