@@ -131,11 +131,9 @@ class QTerminalWidget(QWidget):
 
         self.fm = QFontMetricsF(self.font)
         self.char_height = self.fm.height()
-        self.real_char_height = self.fm.height()
         self.char_width = self.get_text_width("W")
         self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
         self.underline_pos = self.fm.underlinePos()
-        self.set_offset()
 
         self.backend = backend.Backend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
@@ -198,21 +196,14 @@ class QTerminalWidget(QWidget):
         return brush
 
     def pixel_to_position(self, x, y):
-        column = int(x / self.char_width)
+        col = int(x / self.char_width)
         row = int(y / self.char_height)
-        row = row if row > 0 else 1
-        return column, row
-
-    def set_offset(self):
-        self.char_height = (
-            self.height() - self.rows * self.real_char_height
-        ) / self.rows + self.real_char_height
+        return col, row
 
     def resizeEvent(self, event):
         width = self.width()
         height = self.height()
         self.columns, self.rows = self.pixel_to_position(width, height)
-        self.set_offset()
         self.backend.resize(self.columns, self.rows)
         self.pixmap = QPixmap(width, height)
         self.paint_pixmap()
@@ -411,9 +402,7 @@ class QTerminalWidget(QWidget):
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(brush)
-        painter.drawRect(
-            QRectF(cursor_x, cursor_y, cursor_width, self.real_char_height)
-        )
+        painter.drawRect(QRectF(cursor_x, cursor_y, cursor_width, cursor_height))
 
     def paint_pixmap(self):
         painter = QPainter(self.pixmap)
