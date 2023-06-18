@@ -263,7 +263,6 @@ class QTerminalWidget(QWidget):
         start_x: float,
         start_y: float,
         is_two_width: bool,
-        in_last_line: bool,
     ):
         fg = "black" if pre_char.fg == "default" else pre_char.fg
         bg = "white" if pre_char.bg == "default" else pre_char.bg
@@ -286,12 +285,6 @@ class QTerminalWidget(QWidget):
 
         if bg != "default":
             painter.fillRect(rect, self.get_brush(bg))
-
-            if in_last_line:
-                extra_start_y = start_y + self.char_height
-                height = self.height() - extra_start_y
-                extra_rect = QRectF(start_x, extra_start_y, text_width, height)
-                painter.fillRect(extra_rect, self.get_brush(bg))
 
         painter.setFont(self.get_font(style))
         painter.setPen(self.get_pen(fg))
@@ -326,9 +319,10 @@ class QTerminalWidget(QWidget):
 
         in_last_line = line_num == self.rows - 1
 
-        height = self.height() - start_y if in_last_line else self.char_height
-        clear_rect = QRectF(start_x, start_y, self.width(), height)
+        clear_rect = QRectF(0, start_y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
+
+        all_background = set()
 
         line = screen.get_line(line_num)
 
@@ -358,6 +352,9 @@ class QTerminalWidget(QWidget):
 
             text_width = self.get_text_width(same_text, real_is_two_width)
 
+            if char:
+                all_background.add(char.bg)
+
             self.draw_text(
                 painter,
                 same_text,
@@ -366,7 +363,6 @@ class QTerminalWidget(QWidget):
                 start_x,
                 start_y,
                 real_is_two_width,
-                in_last_line,
             )
 
             start_x += text_width
@@ -377,6 +373,14 @@ class QTerminalWidget(QWidget):
             if char:
                 pre_char = char
                 same_text = char.data
+
+        if in_last_line:
+            start_y += self.char_height
+            height = self.height() - start_y
+            brush = all_background.pop() if len(all_background) == 1 else "default"
+
+            clear_rect = QRectF(0, start_y, self.width(), height)
+            painter.fillRect(clear_rect, self.get_brush(brush))
 
     def paint_cursor(self, painter: QPainter):
         cursor = self.backend.cursor
