@@ -90,5 +90,19 @@ class QTerminalScreen(HistoryScreen):
 
         self.dirty.update(range(lines))
 
+        count = self.lines - lines
+        if lines < self.lines and self.cursor.y > count:
+            self.cursor.y -= count
+
+            for y in range(self.lines):
+                if y < count:
+                    self.history.top.append(self.buffer.pop(y))
+                else:
+                    self.buffer[y - count] = self.buffer.pop(y)
+
+        if columns < self.columns:
+            for line in self.buffer.values():
+                for x in range(columns, self.columns):
+                    line.pop(x, None)
+
         self.lines, self.columns = lines, columns
-        self.set_margins()
