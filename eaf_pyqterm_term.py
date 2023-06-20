@@ -80,6 +80,15 @@ class QTerminalScreen(HistoryScreen):
         else:
             return self.buffer[self.base - len(self.history.top) + line_num]
 
+    def get_line_display(self, line_num: int, in_buffer: bool = False):
+        line = self.buffer[line_num] if in_buffer else self.get_line(line_num)
+        return "".join(line[x].data for x in range(self.columns))
+
+    def get_last_blank_line(self):
+        for y in range(self.lines - 1, -1, -1):
+            if self.get_line_display(y, True).strip() != "":
+                return y + 1
+
     # https://github.com/selectel/pyte/blob/a1c089e45b5d0eef0f3450984350254248f02519/pyte/screens.py#L286
     def resize(self, lines=None, columns=None):
         lines = lines or self.lines
@@ -91,14 +100,21 @@ class QTerminalScreen(HistoryScreen):
             return  # No changes.
 
         count = self.lines - lines
-        if count > 0 and self.cursor.y >= lines:
+        last_blank_line = self.get_last_blank_line() or -1
+        if count > 0 and last_blank_line >= lines:
+            count = last_blank_line - count if last_blank_line != -1 else count
             self.cursor.y -= count
 
             for y in range(self.lines):
+                line = self.buffer.pop(y)
+
+                if y >= last_blank_line > -1:
+                    continue
+
                 if y < count:
-                    self.history.top.append(self.buffer.pop(y))
+                    self.history.top.append(line)
                 else:
-                    self.buffer[y - count] = self.buffer.pop(y)
+                    self.buffer[y - count] = line
 
         if columns < self.columns:
             for line in self.buffer.values():
