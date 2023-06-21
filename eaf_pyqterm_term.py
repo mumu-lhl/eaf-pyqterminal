@@ -104,7 +104,7 @@ class QTerminalScreen(HistoryScreen):
         count = self.lines - lines
         last_blank_line = self.get_last_blank_line()
         if count > 0 and last_blank_line > lines:
-            count = last_blank_line - count + 1 if last_blank_line != self.lines else count
+            count = last_blank_line - count if last_blank_line != self.lines else count
             self.cursor.y -= count
 
             for y in range(self.lines):
