@@ -89,6 +89,8 @@ class QTerminalScreen(HistoryScreen):
             if self.get_line_display(y, True).strip() != "":
                 return y + 1
 
+        return 0
+
     # https://github.com/selectel/pyte/blob/a1c089e45b5d0eef0f3450984350254248f02519/pyte/screens.py#L286
     def resize(self, lines=None, columns=None):
         lines = lines or self.lines
@@ -100,15 +102,15 @@ class QTerminalScreen(HistoryScreen):
             return  # No changes.
 
         count = self.lines - lines
-        last_blank_line = self.get_last_blank_line() or -1
-        if count > 0 and last_blank_line >= lines:
-            count = last_blank_line - count if last_blank_line != -1 else count
+        last_blank_line = self.get_last_blank_line()
+        if count > 0 and last_blank_line > lines:
+            count = last_blank_line - count if last_blank_line != self.lines else count
             self.cursor.y -= count
 
             for y in range(self.lines):
                 line = self.buffer.pop(y)
 
-                if y >= last_blank_line > -1:
+                if y >= last_blank_line and last_blank_line != self.lines:
                     continue
 
                 if y < count:
