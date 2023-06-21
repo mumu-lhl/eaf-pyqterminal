@@ -313,11 +313,12 @@ class QTerminalWidget(QWidget):
             painter.drawLine(line)
 
     def paint_line_text(self, painter: QPainter, line_num: int):
+        if line_num >= self.rows:
+            return
+
         start_x = 0
         start_y = line_num * self.char_height
         screen = self.backend.screen
-
-        in_last_line = line_num == self.rows - 1
 
         clear_rect = QRectF(0, start_y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
@@ -374,7 +375,7 @@ class QTerminalWidget(QWidget):
                 pre_char = char
                 same_text = char.data
 
-        if in_last_line:
+        if line_num == self.rows - 1:
             start_y += self.char_height
             height = self.height() - start_y
             brush = all_background.pop() if len(all_background) == 1 else "default"
