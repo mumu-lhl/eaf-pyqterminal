@@ -342,13 +342,9 @@ class QTerminalWidget(QWidget):
             if char and char.data == "":
                 continue
 
-            if char and (line[col + 1].data == "" or line[col - 1].data == ""):
-                is_two_width = True
-            else:
-                is_two_width = False
-                real_is_two_width = False
+            is_two_width = char and line[col + 1].data == ""
 
-            if char and self.check_draw_together(pre_char, char) and not is_two_width:
+            if char and self.check_draw_together(pre_char, char) and not is_two_width and not real_is_two_width:
                 same_text += char.data
                 continue
 
@@ -368,9 +364,7 @@ class QTerminalWidget(QWidget):
             )
 
             start_x += text_width
-
-            if is_two_width:
-                real_is_two_width = True
+            real_is_two_width = is_two_width
 
             if char:
                 pre_char = char
