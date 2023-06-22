@@ -22,7 +22,6 @@
 import math
 from enum import Enum
 
-import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
@@ -40,6 +39,8 @@ from PyQt6.QtGui import (
     QWheelEvent,
 )
 from PyQt6.QtWidgets import QWidget
+
+import eaf_pyqterm_backend as backend
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -226,7 +227,7 @@ class QTerminalWidget(QWidget):
             self.change_title(f"Term [{title}]")
 
         directory = self.backend.getcwd()
-        if directory != self.directory:
+        if directory and directory != self.directory:
             self.directory = directory
             eval_in_emacs("eaf--change-default-directory", [self.buffer_id, directory])
 
