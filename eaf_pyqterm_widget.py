@@ -428,7 +428,9 @@ class QTerminalWidget(QWidget):
                 continue
             text_width += self.get_text_width(char, line[col + 1].data == "")
 
-        cursor_width = self.char_width
+        cursor_width = (
+            self.char_width * 2 if line[cursor.x + 1].data == "" else self.char_width
+        )
         cursor_height = self.char_height
         cursor_x = text_width
         cursor_y = cursor.y * self.char_height

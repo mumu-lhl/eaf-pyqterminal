@@ -133,7 +133,15 @@ class QTerminalScreen(HistoryScreen):
     def get_cursor(self):
         return self.virtual_cursor if self.cursor_move_mode else self.cursor
 
-    def get_line_display(self, line_num: int, /, in_buffer: bool = False, start: int = 0, end = None, absolute: bool = False):
+    def get_line_display(
+        self,
+        line_num: int,
+        /,
+        in_buffer: bool = False,
+        start: int = 0,
+        end=None,
+        absolute: bool = False,
+    ):
         if end is None:
             end = self.columns
 
