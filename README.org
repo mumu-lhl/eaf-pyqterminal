@@ -22,7 +22,7 @@ It is recommended to install [[https://www.nerdfonts.com][Nerd Fonts]] to suppor
 | psutil                  | get child process information |
 | pywinpty (only Windows) | pty on Windows                |
 
-### The keybinding of EAF PyQterminal.
+*** The keybinding of EAF PyQterminal.
 
 | Key           | Event                           |
 | C-S-v         | yank_text                       |
@@ -63,7 +63,7 @@ It is recommended to install [[https://www.nerdfonts.com][Nerd Fonts]] to suppor
 | M-<backspace> | eaf-send-alt-backspace-sequence |
 | <escape>      | eaf-send-escape-key             |
 
-### The keybinding of EAF PyQterminal Cursor Move Mode.
+*** The keybinding of EAF PyQterminal Cursor Move Mode.
 
 | Key   | Event                   |
 | j     | next_line               |
