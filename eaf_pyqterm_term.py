@@ -53,20 +53,11 @@ class QTerminalScreen(HistoryScreen):
 
     @property
     def at_top(self):
-        if self.base == 0 and self.virtual_cursor.y == 0:
-            return True
-        else:
-            return False
+        return self.base == 0 and self.virtual_cursor.y == 0
 
     @property
     def at_bottom(self):
-        if (
-            not self.in_history
-            and self.virtual_cursor.y + 1 == self.get_last_blank_line()
-        ):
-            return True
-        else:
-            return False
+        return not self.in_history and self.virtual_cursor.y + 1 == self.get_last_blank_line()
 
     def bell(self):
         playsound(BELL_SOUND_PATH, False)
