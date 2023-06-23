@@ -258,6 +258,11 @@ class QTerminalScreen(HistoryScreen):
     def next_character(self, num=1):
         x = self.virtual_cursor.x + num
         end_x = self.get_end_x(self.virtual_cursor.y)
+        line = self.get_line(self.virtual_cursor.y)
+
+        # Skip two width character
+        if line[x].data == "":
+            x += 1
 
         if x > end_x and not self.at_bottom:
             self.virtual_cursor.x = 0
@@ -270,6 +275,11 @@ class QTerminalScreen(HistoryScreen):
     def previous_character(self, num=1):
         x = self.virtual_cursor.x - num
         end_x = self.get_end_x(self.virtual_cursor.y - 1)
+        line = self.get_line(self.virtual_cursor.y)
+
+        # Skip two width character
+        if line[x].data == "":
+            x -= 1
 
         if x < 0 and not self.at_top:
             self.virtual_cursor.x = end_x
