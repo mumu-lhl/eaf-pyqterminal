@@ -130,10 +130,6 @@ class Backend:
         return bool(self.screen.history.bottom)
 
     @property
-    def cursor(self):
-        return self.screen.cursor
-
-    @property
     def title(self):
         return self.screen.title or self.buffer_screen.title
 

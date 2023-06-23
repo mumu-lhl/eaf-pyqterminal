@@ -106,6 +106,7 @@ If alpha < 0, don't set alpha for cursor."
     ("M-f" . "eaf-send-key-sequence")
     ("M-b" . "eaf-send-key-sequence")
     ("M-d" . "eaf-send-key-sequence")
+    ("M-c" . "toggle_cursor_move_mode")
     ("M-k" . "scroll_up")
     ("M-j" . "scroll_down")
     ("M-v" . "scroll_up_page")
@@ -115,6 +116,40 @@ If alpha < 0, don't set alpha for cursor."
     ("M-<backspace>" . "eaf-send-alt-backspace-sequence")
     ("<escape>" . "eaf-send-escape-key"))
   "The keybinding of EAF PyQterminal."
+  :type 'cons)
+
+(defcustom eaf-pyqterminal-cursor-move-mode-keybinding
+  '(("j" . "next_line")
+    ("k" . "previous_line")
+    ("l" . "next_character")
+    ("h" . "previous_character")
+    ("e" . "next_word")
+    ("b" . "previous_word")
+    ("J" . "scroll_down")
+    ("K" . "scroll_up")
+    ("H" . "move_beginning_of_line")
+    ("L" . "move_end_of_line")
+    ("d" . "scroll_down_page")
+    ("u" . "scroll_up_page")
+    ("v" . "toggle_mark")
+    ("y" . "copy_text")
+    ("C-a" . "move_beginning_of_line")
+    ("C-e" . "move_end_of_line")
+    ("C-n" . "next_line")
+    ("C-p" . "previous_line")
+    ("C-f" . "next_character")
+    ("C-b" . "previous_character")
+    ("C-v" . "scroll_down_page")
+    ("M-f" . "next_word")
+    ("M-b" . "previous_word")
+    ("M-v" . "scroll_up_page")
+    ("M-c" . "toggle_cursor_move_mode")
+    ("M-w" . "copy_text")
+    ("C-SPC" . "toggle_mark")
+    ("q" . "toggle_cursor_move_mode"))
+  "The keybinding of EAF PyQterminal Cursor Move Mode.
+
+Cursor Move Mode allows you to move cursor in the screen."
   :type 'cons)
 
 (add-to-list
@@ -148,12 +183,6 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
      args)
     (eaf-open dir "pyqterminal" (json-encode-hash-table args) always-new)))
 
-(defun eaf-pyqterminal-get-clipboard ()
-  "Get clipboard text."
-  (let* ((source-data (current-kill 0)))
-    (set-text-properties 0 (length source-data) nil source-data)
-    source-data))
-
 (defun eaf--generate-terminal-command ()
   (if (or (eaf--called-from-wsl-on-windows-p) (eq system-type 'windows-nt))
       "powershell.exe"
@@ -163,6 +192,13 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
   (if (eaf--called-from-wsl-on-windows-p)
       "ipython.exe"
     "ipython"))
+
+(defun eaf--toggle-cursor-move-mode (status)
+  "Toggle Cursor Move Mode."
+  (if status
+      (eaf--gen-keybinding-map eaf-pyqterminal-cursor-move-mode-keybinding t)
+    (eaf--gen-keybinding-map eaf-pyqterminal-keybinding))
+  (setq eaf--buffer-map-alist (list (cons t eaf-mode-map))))
 
 ;;;###autoload
 (defun eaf-open-pyqterminal ()

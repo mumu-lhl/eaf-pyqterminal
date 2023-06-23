@@ -22,6 +22,7 @@
 import math
 from enum import Enum
 
+import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
@@ -39,8 +40,7 @@ from PyQt6.QtGui import (
     QWheelEvent,
 )
 from PyQt6.QtWidgets import QWidget
-
-import eaf_pyqterm_backend as backend
+from pyte.screens import Cursor
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -96,10 +96,10 @@ class QTerminalWidget(QWidget):
         self.ensure_font_exist()
 
         for name, color_str in color_schema:
-            color = QColor(color_str)
             if name == "cursor":
-                self.cursor_color = color
+                self.cursor_color = color_str
                 continue
+            color = QColor(color_str)
             self.colors[name] = color
 
         self.theme_mode = get_emacs_theme_mode()
@@ -125,8 +125,9 @@ class QTerminalWidget(QWidget):
         self.directory = ""
         self.title = ""
 
-        self.cursor_x = 0
-        self.cursor_y = 0
+        self.cursor = Cursor(0, 0)
+
+        self.cursor_move_mode = False
 
         self.font = self.get_font()
 
@@ -166,13 +167,18 @@ class QTerminalWidget(QWidget):
 
         return font
 
-    def get_color(self, color_name: str) -> QColor | str:
-        if color_name in self.colors:
+    def get_color(self, color_name: str, alpha: int = -1) -> QColor | str:
+        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
+
+        if alpha_color_name in self.colors:
             return self.colors[color_name]
-        if color_name == "default":
+        elif color_name == "default":
             return "default"
 
-        color = QColor("#" + color_name)
+        color = QColor(color_name) if color_name[0] == "#" else QColor("#" + color_name)
+        if alpha >= 0:
+            color.setAlpha(alpha)
+            color_name = alpha_color_name
         self.colors[color_name] = color
         return color
 
@@ -186,13 +192,16 @@ class QTerminalWidget(QWidget):
         self.pens[color_name] = pen
         return pen
 
-    def get_brush(self, color_name: str) -> QBrush:
-        brush = self.brushes.get(color_name)
+    def get_brush(self, color_name: str, alpha: int = -1) -> QBrush:
+        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
+
+        brush = self.brushes.get(alpha_color_name)
         if brush:
             return brush
 
-        color = self.get_color(color_name)
+        color = self.get_color(color_name, alpha)
         brush = QBrush(color)
+        color_name = alpha_color_name if alpha >= 0 else color_name
         self.brushes[color_name] = brush
         return brush
 
@@ -210,11 +219,12 @@ class QTerminalWidget(QWidget):
         self.paint_pixmap()
 
     def timerEvent(self, event):
-        cursor = self.backend.cursor
+        cursor = self.backend.screen.get_cursor()
         if (
             not self.backend.screen.dirty
-            and self.cursor_x == cursor.x
-            and self.cursor_y == cursor.y
+            and self.cursor.x == cursor.x
+            and self.cursor.y == cursor.y
+            and self.cursor.hidden == cursor.hidden
         ):
             return
 
@@ -234,8 +244,8 @@ class QTerminalWidget(QWidget):
     def paint_text(self, painter: QPainter):
         screen = self.backend.screen
 
-        # redraw the old cursor line
-        screen.dirty.add(self.cursor_y)
+        # redraw the old and new cursor line
+        screen.dirty.update([self.cursor.y, screen.get_cursor().y])
 
         # dirty will change when traversing
         for _ in range(len(screen.dirty)):
@@ -264,13 +274,22 @@ class QTerminalWidget(QWidget):
         start_x: float,
         start_y: float,
         is_two_width: bool,
+        in_selection: bool,
     ):
-        fg = "black" if pre_char.fg == "default" else pre_char.fg
-        bg = "white" if pre_char.bg == "default" else pre_char.bg
         if self.theme_mode == "dark":
             fg = "white" if pre_char.fg == "default" else pre_char.fg
             bg = "black" if pre_char.bg == "default" else pre_char.bg
-        if pre_char.reverse:
+            if in_selection:
+                fg = "black"
+                bg = "white"
+        else:
+            fg = "black" if pre_char.fg == "default" else pre_char.fg
+            bg = "white" if pre_char.bg == "default" else pre_char.bg
+            if in_selection:
+                fg = "white"
+                bg = "black"
+
+        if pre_char.reverse and not in_selection:
             fg, bg = bg, fg
 
         if text.strip() == "" and bg == "default":
@@ -343,15 +362,22 @@ class QTerminalWidget(QWidget):
                 continue
 
             is_two_width = char and line[col + 1].data == ""
+            in_selection = screen.in_selection(col, line_num)
 
-            if char and self.check_draw_together(pre_char, char) and not is_two_width and not real_is_two_width:
+            if col == 0:
+                pre_in_selection = in_selection
+
+            if (
+                char
+                and self.check_draw_together(pre_char, char)
+                and pre_in_selection == in_selection
+                and not is_two_width
+                and not real_is_two_width
+            ):
                 same_text += char.data
                 continue
 
             text_width = self.get_text_width(same_text, real_is_two_width)
-
-            if char:
-                all_background.add(char.bg)
 
             self.draw_text(
                 painter,
@@ -361,14 +387,17 @@ class QTerminalWidget(QWidget):
                 start_x,
                 start_y,
                 real_is_two_width,
+                pre_in_selection,
             )
 
             start_x += text_width
             real_is_two_width = is_two_width
+            pre_in_selection = in_selection
 
             if char:
                 pre_char = char
                 same_text = char.data
+                all_background.add(char.bg)
 
         if line_num == self.rows - 1:
             start_y += self.char_height
@@ -379,14 +408,17 @@ class QTerminalWidget(QWidget):
             painter.fillRect(clear_rect, self.get_brush(brush))
 
     def paint_cursor(self, painter: QPainter):
-        cursor = self.backend.cursor
         screen = self.backend.screen
+        cursor = screen.get_cursor()
 
-        if cursor.hidden or screen.in_history:
+        if cursor.hidden or (screen.in_history and not screen.cursor_move_mode):
             return
 
-        self.cursor_x = cursor.x
-        self.cursor_y = cursor.y
+        self.cursor.x, self.cursor.y, self.cursor.hidden = (
+            cursor.x,
+            cursor.y,
+            cursor.hidden,
+        )
 
         line = screen.get_line(cursor.y)
         text_width = 0
@@ -399,17 +431,22 @@ class QTerminalWidget(QWidget):
         cursor_width = self.char_width
         cursor_height = self.char_height
         cursor_x = text_width
-        cursor_y = self.cursor_y * self.char_height
+        cursor_y = cursor.y * self.char_height
         if self.cursor_type == "bar":
             cursor_height = self.cursor_size
             cursor_y += self.char_height - cursor_height
         elif self.cursor_type == "hbar":
             cursor_width = self.cursor_size
 
-        bcol = QColor(self.cursor_color)
-        if self.cursor_alpha >= 0:
-            bcol.setAlpha(self.cursor_alpha)
-        brush = QBrush(bcol)
+        has_char_under_cursor = line[cursor.x].data != " "
+        cursor_alpha = (
+            110
+            if has_char_under_cursor and self.cursor_alpha < 0
+            else self.cursor_alpha
+        )
+        brush = self.get_brush(self.cursor_color, cursor_alpha)
+        if screen.marker != ():
+            brush = self.get_brush("yellow", cursor_alpha)
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(brush)
@@ -439,7 +476,10 @@ class QTerminalWidget(QWidget):
         modifier = event.modifiers()
         s = KEY_DICT.get(key)
 
-        self.backend.screen.exit_history()
+        if self.backend.screen.cursor_move_mode:
+            return
+
+        self.backend.screen.scroll_to_bottom()
 
         if (text or s) and modifier == Qt.KeyboardModifier.ControlModifier:
             # 'a' => '\x01', 'A' => '\x01'
@@ -477,9 +517,8 @@ class QTerminalWidget(QWidget):
 
     @interactive
     def yank_text(self):
-        text = get_emacs_func_result("eaf-pyqterminal-get-clipboard", ())
-        if isinstance(text, str):
-            self.send(text)
+        text = get_clipboard_text()
+        self.send(text)
 
     @interactive
     def scroll_up(self):
@@ -499,8 +538,56 @@ class QTerminalWidget(QWidget):
 
     @interactive
     def scroll_to_begin(self):
-        self.backend.screen.scroll_up(self.backend.screen.base)
+        self.backend.screen.scroll_to_begin()
 
     @interactive
     def scroll_to_bottom(self):
-        self.backend.screen.exit_history()
+        self.backend.screen.scroll_to_bottom()
+
+    @interactive
+    def next_line(self):
+        self.backend.screen.next_line()
+
+    @interactive
+    def previous_line(self):
+        self.backend.screen.previous_line()
+
+    @interactive
+    def next_character(self):
+        self.backend.screen.next_character()
+
+    @interactive
+    def previous_character(self):
+        self.backend.screen.previous_character()
+
+    @interactive
+    def next_word(self):
+        self.backend.screen.next_word()
+
+    @interactive
+    def previous_word(self):
+        self.backend.screen.previous_word()
+
+    @interactive
+    def move_beginning_of_line(self):
+        self.backend.screen.move_beginning_of_line()
+
+    @interactive
+    def move_end_of_line(self):
+        self.backend.screen.move_end_of_line()
+
+    @interactive
+    def toggle_mark(self):
+        self.backend.screen.toggle_mark()
+
+    @interactive
+    def toggle_cursor_move_mode(self):
+        self.backend.screen.toggle_cursor_move_mode()
+        eval_in_emacs(
+            "eaf--toggle-cursor-move-mode",
+            ["'t" if self.backend.screen.cursor_move_mode else "'nil"],
+        )
+
+    @interactive
+    def copy_text(self):
+        self.backend.screen.copy_text()
