@@ -39,6 +39,8 @@ class QTerminalScreen(HistoryScreen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.is_buffer = False
+
         self.base = 0
         self.in_history = False
 
@@ -63,6 +65,9 @@ class QTerminalScreen(HistoryScreen):
         playsound(BELL_SOUND_PATH, False)
 
     def scroll_up(self, line_num):
+        if self.is_buffer:
+            return
+
         if self.base != 0:
             self.in_history = True
 
@@ -74,6 +79,9 @@ class QTerminalScreen(HistoryScreen):
             self.dirty.update(range(self.lines))
 
     def scroll_down(self, line_num):
+        if self.is_buffer:
+            return
+
         base = self.base + line_num
         old_base = self.base
 
@@ -87,10 +95,16 @@ class QTerminalScreen(HistoryScreen):
             self.dirty.update(range(self.lines))
 
     def scroll_to_begin(self):
+        if self.is_buffer:
+            return
+
         self.scroll_up(self.base)
         self.virtual_cursor.x, self.virtual_cursor.y = 0, 0
 
     def scroll_to_bottom(self):
+        if self.is_buffer:
+            return
+
         if self.in_history:
             self.base = len(self.history.top)
             self.in_history = False

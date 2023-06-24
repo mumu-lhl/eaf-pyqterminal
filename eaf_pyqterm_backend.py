@@ -113,6 +113,7 @@ class Backend:
     def __init__(self, width, height):
         self.screen = QTerminalScreen(width, height, history=99999)
         self.buffer_screen = QTerminalScreen(width, height, history=99999)
+        self.buffer_screen.is_buffer = True
         self.stream = QTerminalStream(self.screen)
         self.buffer_stream = QTerminalStream(self.buffer_screen)
 
