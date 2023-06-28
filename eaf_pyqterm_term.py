@@ -452,11 +452,11 @@ class QTerminalScreen(HistoryScreen):
         if (cursor_y == marker_y and marker_x < cursor.x) or (marker_y < cursor_y):
             start = (marker_x, marker_y)
             end = (cursor.x, cursor_y)
-        elif cursor_y == marker_y and (cursor_y < marker_y):
+        elif (cursor_y == marker_y and cursor.x < marker_x) or (cursor_y < marker_y):
             start = (cursor.x, cursor_y)
             end = (marker_x, marker_y)
 
-        self.copy(start, end)
+        self._copy(start, end)
         self.toggle_mark()
 
     def copy_thing(self, thing):
