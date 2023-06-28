@@ -432,18 +432,18 @@ class QTerminalWidget(QWidget):
         cursor_height = self.char_height
         cursor_x = text_width
         cursor_y = cursor.y * self.char_height
-        if self.cursor_type == "bar":
+        cursor_alpha = self.cursor_alpha
+
+        has_char_under_cursor = line[cursor.x].data != " "
+
+        if self.cursor_type == "box" and has_char_under_cursor and self.cursor_alpha < 0:
+            cursor_alpha = 110
+        elif self.cursor_type == "bar":
             cursor_height = self.cursor_size
             cursor_y += self.char_height - cursor_height
         elif self.cursor_type == "hbar":
             cursor_width = self.cursor_size
 
-        has_char_under_cursor = line[cursor.x].data != " "
-        cursor_alpha = (
-            110
-            if has_char_under_cursor and self.cursor_alpha < 0
-            else self.cursor_alpha
-        )
         brush = self.get_brush(self.cursor_color, cursor_alpha)
         if screen.marker != ():
             brush = self.get_brush("yellow", cursor_alpha)
