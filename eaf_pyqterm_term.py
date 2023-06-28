@@ -27,7 +27,13 @@ from pyte.screens import Cursor, HistoryScreen
 from pyte.streams import ByteStream
 
 BELL_SOUND_PATH = get_emacs_vars(("eaf-pyqterminal-bell-sound-path",))[0]
-WORD_REGEXP = "[\s,\._()=*\"'\[\]-]"
+
+
+def get_regexp(thing):
+    if thing == "word":
+        return re.compile("[\s,\._()=*\"'\[\]/-]")
+    elif thing == "symbol":
+        return re.compile("\s")
 
 
 class QTerminalStream(ByteStream):
@@ -46,8 +52,11 @@ class QTerminalScreen(HistoryScreen):
 
         self.cursor_move_mode = False
         self.virtual_cursor = Cursor(0, 0)
+        self.old_cursor = Cursor(0, 0)
+        self.old_marker_cursor = Cursor(0, 0)
         self.max_virtual_cursor_x = 0
         self.marker = ()
+        self.fake_marker = False
         self.first_move = True
 
     def absolute_y(self, line_num):
@@ -59,7 +68,10 @@ class QTerminalScreen(HistoryScreen):
 
     @property
     def at_bottom(self):
-        return not self.in_history and self.virtual_cursor.y + 1 == self.get_last_blank_line()
+        return (
+            not self.in_history
+            and self.virtual_cursor.y + 1 == self.get_last_blank_line()
+        )
 
     def bell(self):
         playsound(BELL_SOUND_PATH, False)
@@ -139,13 +151,7 @@ class QTerminalScreen(HistoryScreen):
         return self.virtual_cursor if self.cursor_move_mode else self.cursor
 
     def get_line_display(
-        self,
-        line_num: int,
-        /,
-        in_buffer: bool = False,
-        start: int = 0,
-        end=None,
-        absolute: bool = False,
+        self, line_num, *, in_buffer=False, start=0, end=None, absolute=False
     ):
         if end is None:
             end = self.columns
@@ -296,14 +302,16 @@ class QTerminalScreen(HistoryScreen):
 
     def find(self, y, pattern, start, reverse=False):
         line = self.get_line(y)
-        pattern = re.compile(pattern)
         iterator = (
-            range(start - 1, -1, -1) if reverse else range(start, self.get_end_x(y) + 1)
+            range(start, -1, -1) if reverse else range(start, self.get_end_x(y) + 1)
         )
         string_match = False
 
         for column in iterator:
             pattern_match = bool(pattern.match(line[column].data))
+
+            if reverse and column == start - 1 and pattern_match:
+                string_match = False
 
             if string_match and pattern_match:
                 return column
@@ -313,9 +321,9 @@ class QTerminalScreen(HistoryScreen):
 
         return -1
 
-    def next_word(self, first=True):
-        start = self.virtual_cursor.x + 1 if first else 0
-        x = self.find(self.virtual_cursor.y, WORD_REGEXP, start)
+    def next_thing(self, thing, first=True):
+        start = self.virtual_cursor.x if first else 0
+        x = self.find(self.virtual_cursor.y, get_regexp(thing), start)
 
         self.move_beginning_of_line()
 
@@ -325,17 +333,15 @@ class QTerminalScreen(HistoryScreen):
 
         if x == -1:
             self.next_line()
-            self.next_word(False)
+            self.next_thing(thing, False)
         else:
             self.next_character(x)
 
-    def previous_word(self, first=True):
+    def previous_thing(self, thing, first=True):
         start = (
-            self.virtual_cursor.x - 1
-            if first
-            else self.get_end_x(self.virtual_cursor.y)
+            self.virtual_cursor.x if first else self.get_end_x(self.virtual_cursor.y)
         )
-        x = self.find(self.virtual_cursor.y, WORD_REGEXP, start, True)
+        x = self.find(self.virtual_cursor.y, get_regexp(thing), start, True)
 
         if x == -1 and self.at_top:
             self.move_beginning_of_line()
@@ -344,7 +350,7 @@ class QTerminalScreen(HistoryScreen):
         if x == -1:
             self.previous_line()
             self.move_end_of_line()
-            self.previous_word(False)
+            self.previous_thing(thing, False)
         else:
             self.move_beginning_of_line()
             self.next_character(x + 1)
@@ -365,7 +371,7 @@ class QTerminalScreen(HistoryScreen):
         else:
             old_marker_y = cursor.y
 
-        if self.marker == (cursor.x, self.absolute_y(cursor.y)):
+        if self.marker == (cursor.x, self.absolute_y(cursor.y)) or self.fake_marker:
             self.marker = ()
         else:
             self.marker = (cursor.x, self.absolute_y(cursor.y))
@@ -382,6 +388,15 @@ class QTerminalScreen(HistoryScreen):
             return False
 
         cursor = self.virtual_cursor
+
+        if self.fake_marker:
+            if cursor.x != self.old_cursor.x or cursor.y != self.old_cursor.y:
+                self.toggle_mark()
+                self.fake_marker = False
+                return False
+            else:
+                cursor = self.old_marker_cursor
+
         (marker_x, marker_y) = self.marker
         marker_y -= self.base
         end_x = self.get_end_x(y)
@@ -414,17 +429,25 @@ class QTerminalScreen(HistoryScreen):
 
         return False
 
-    def copy_text(self):
+    def _copy(self, start, end):
+        text = ""
+
+        for y in range(start[1], end[1] + 1):
+            start_x = start[0] if y == start[1] else 0
+            end_x = end[0] if y == end[1] else self.columns
+            text += self.get_line_display(y, start=start_x, end=end_x, absolute=True)
+
+        message_to_emacs("Copy text")
+        set_clipboard_text(text)
+
+    def _copy_selection(self):
         if self.marker == ():
-            message_to_emacs("No copy")
+            message_to_emacs("Nothing selected")
             return
 
-        start = ()
-        end = ()
         cursor = self.virtual_cursor
         cursor_y = self.absolute_y(cursor.y)
         (marker_x, marker_y) = self.marker
-        text = ""
 
         if (cursor_y == marker_y and marker_x < cursor.x) or (marker_y < cursor_y):
             start = (marker_x, marker_y)
@@ -433,10 +456,51 @@ class QTerminalScreen(HistoryScreen):
             start = (cursor.x, cursor_y)
             end = (marker_x, marker_y)
 
-        for y in range(start[1], end[1] + 1):
-            start_x = start[0] if y == start[1] else 0
-            end_x = end[0] if y == end[1] else self.columns
-            text += self.get_line_display(y, start=start_x, end=end_x, absolute=True)
-
-        set_clipboard_text(text)
+        self.copy(start, end)
         self.toggle_mark()
+
+    def copy_thing(self, thing):
+        if thing == "selection":
+            self._copy_selection()
+            return
+
+        self.fake_marker = False
+        old_virtual_cursor_x, old_virtual_cursor_y = (
+            self.virtual_cursor.x,
+            self.virtual_cursor.y,
+        )
+        x = self.virtual_cursor.x - 1
+        x = 0 if x < 0 else x
+
+        after_pattern_match = bool(
+            get_regexp(thing).match(self.get_line(self.virtual_cursor.y)[x].data)
+        )
+        if after_pattern_match:
+            self.next_thing(thing)
+        else:
+            self.previous_thing(thing)
+
+        if self.virtual_cursor.y == old_virtual_cursor_y - 1:
+            self.virtual_cursor.x, self.virtual_cursor.y = 0, old_virtual_cursor_y
+
+        self.toggle_mark()
+        start = (self.virtual_cursor.x, self.virtual_cursor.y)
+
+        if after_pattern_match:
+            self.previous_thing(thing)
+        else:
+            self.next_thing(thing)
+
+        end = self.virtual_cursor.x, self.virtual_cursor.y
+        self.virtual_cursor.x = old_virtual_cursor_x
+        self.old_cursor.x, self.old_cursor.y = self.virtual_cursor.x, self.virtual_cursor.y
+        self.old_marker_cursor.x, self.old_marker_cursor.y = end
+        self.fake_marker = True
+
+        self._copy(start, end)
+
+    def copy_word(self):
+        self.copy_thing("word")
+
+    def copy_symbol(self):
+        self.copy_thing("symbol")

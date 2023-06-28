@@ -127,8 +127,6 @@ class QTerminalWidget(QWidget):
 
         self.cursor = Cursor(0, 0)
 
-        self.cursor_move_mode = False
-
         self.font = self.get_font()
 
         self.fm = QFontMetricsF(self.font)
@@ -564,11 +562,19 @@ class QTerminalWidget(QWidget):
 
     @interactive
     def next_word(self):
-        self.backend.screen.next_word()
+        self.backend.screen.next_thing("word")
 
     @interactive
     def previous_word(self):
-        self.backend.screen.previous_word()
+        self.backend.screen.previous_thing("word")
+
+    @interactive
+    def next_symbol(self):
+        self.backend.screen.next_thing("symbol")
+
+    @interactive
+    def previous_symbol(self):
+        self.backend.screen.previous_thing("symbol")
 
     @interactive
     def move_beginning_of_line(self):
@@ -592,4 +598,12 @@ class QTerminalWidget(QWidget):
 
     @interactive
     def copy_text(self):
-        self.backend.screen.copy_text()
+        self.backend.screen.copy_thing("selection")
+
+    @interactive
+    def copy_word(self):
+        self.backend.screen.copy_thing("word")
+
+    @interactive
+    def copy_symbol(self):
+        self.backend.screen.copy_thing("symbol")
