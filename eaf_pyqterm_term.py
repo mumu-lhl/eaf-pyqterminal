@@ -465,9 +465,10 @@ class QTerminalScreen(HistoryScreen):
             return
 
         self.fake_marker = False
-        old_virtual_cursor_x, old_virtual_cursor_y = (
+        old_virtual_cursor_x, old_virtual_cursor_y, old_max_virtual_cursor_x = (
             self.virtual_cursor.x,
             self.virtual_cursor.y,
+            self.max_virtual_cursor_x,
         )
         x = self.virtual_cursor.x - 1
         x = 0 if x < 0 else x
@@ -493,8 +494,12 @@ class QTerminalScreen(HistoryScreen):
 
         end = self.virtual_cursor.x, self.virtual_cursor.y
         self.virtual_cursor.x = old_virtual_cursor_x
-        self.old_cursor.x, self.old_cursor.y = self.virtual_cursor.x, self.virtual_cursor.y
+        self.old_cursor.x, self.old_cursor.y = (
+            self.virtual_cursor.x,
+            self.virtual_cursor.y,
+        )
         self.old_marker_cursor.x, self.old_marker_cursor.y = end
+        self.max_virtual_cursor_x = old_max_virtual_cursor_x
         self.fake_marker = True
 
         self._copy(start, end)
