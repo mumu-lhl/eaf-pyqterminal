@@ -166,15 +166,7 @@ class QTerminalScreen(HistoryScreen):
 
         return 0
 
-    def get_max_x(self, line_num):
-        line = self.get_line(line_num)
-        if len(line) > 0:
-            (x, _) = line.copy().popitem()
-            return x + 1
-        else:
-            return self.columns - 1
-
-    def get_last_space_of_line(self, line_num):
+    def get_end_x(self, line_num):
         line = self.get_line(line_num)
         for x in range(self.columns - 1, -1, -1):
             if line[x].data != " ":
@@ -182,12 +174,6 @@ class QTerminalScreen(HistoryScreen):
 
         return 0
 
-    def get_end_x(self, line_num):
-        max_x = self.get_max_x(line_num)
-        last_space = self.get_last_space_of_line(line_num)
-        return min(max_x, last_space)
-
-    # https://github.com/selectel/pyte/blob/a1c089e45b5d0eef0f3450984350254248f02519/pyte/screens.py#L286
     def resize(self, lines=None, columns=None):
         lines = lines or self.lines
         columns = columns or self.columns
