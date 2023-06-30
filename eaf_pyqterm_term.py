@@ -303,15 +303,12 @@ class QTerminalScreen(HistoryScreen):
     def find(self, y, pattern, start, reverse=False):
         line = self.get_line(y)
         iterator = (
-            range(start, -1, -1) if reverse else range(start, self.get_end_x(y) + 1)
+            range(start - 1, -2, -1) if reverse else range(start, self.get_end_x(y) + 1)
         )
         string_match = False
 
         for column in iterator:
             pattern_match = bool(pattern.match(line[column].data))
-
-            if reverse and column == start - 1 and pattern_match:
-                string_match = False
 
             if string_match and pattern_match:
                 return column
@@ -319,7 +316,7 @@ class QTerminalScreen(HistoryScreen):
             if not pattern_match:
                 string_match = True
 
-        return -1
+        return None
 
     def next_thing(self, thing, first=True):
         start = self.virtual_cursor.x if first else 0
@@ -327,11 +324,11 @@ class QTerminalScreen(HistoryScreen):
 
         self.move_beginning_of_line()
 
-        if x == -1 and self.at_bottom:
+        if x is None and self.at_bottom:
             self.move_end_of_line()
             return
 
-        if x == -1:
+        if x is None:
             self.next_line()
             self.next_thing(thing, False)
         else:
@@ -343,11 +340,11 @@ class QTerminalScreen(HistoryScreen):
         )
         x = self.find(self.virtual_cursor.y, get_regexp(thing), start, True)
 
-        if x == -1 and self.at_top:
+        if x is None and self.at_top:
             self.move_beginning_of_line()
             return
 
-        if x == -1:
+        if x is None:
             self.previous_line()
             self.move_end_of_line()
             self.previous_thing(thing, False)
