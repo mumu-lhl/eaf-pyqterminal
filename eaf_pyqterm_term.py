@@ -470,15 +470,23 @@ class QTerminalScreen(HistoryScreen):
             self.virtual_cursor.y,
             self.max_virtual_cursor_x,
         )
-        x = self.virtual_cursor.x - 1
-        x = 0 if x < 0 else x
 
-        after_pattern_match = bool(
-            get_regexp(thing).match(self.get_line(self.virtual_cursor.y)[x].data)
+        after_match = bool(
+            get_regexp(thing).match(
+                self.get_line(self.virtual_cursor.y)[self.virtual_cursor.x - 1].data
+            )
         )
-        if after_pattern_match:
-            self.next_thing(thing)
-        else:
+        current_match = bool(
+            get_regexp(thing).match(
+                self.get_line(self.virtual_cursor.y)[self.virtual_cursor.x].data
+            )
+        )
+
+        if after_match and current_match:
+            message_to_emacs("Nothing selected")
+            return
+
+        if not after_match:
             self.previous_thing(thing)
 
         if self.virtual_cursor.y == old_virtual_cursor_y - 1:
@@ -487,10 +495,7 @@ class QTerminalScreen(HistoryScreen):
         self.toggle_mark()
         start = (self.virtual_cursor.x, self.virtual_cursor.y)
 
-        if after_pattern_match:
-            self.previous_thing(thing)
-        else:
-            self.next_thing(thing)
+        self.next_thing(thing)
 
         end = self.virtual_cursor.x, self.virtual_cursor.y
         self.virtual_cursor.x = old_virtual_cursor_x

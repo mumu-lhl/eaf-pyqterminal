@@ -436,7 +436,11 @@ class QTerminalWidget(QWidget):
 
         has_char_under_cursor = line[cursor.x].data != " "
 
-        if self.cursor_type == "box" and has_char_under_cursor and self.cursor_alpha < 0:
+        if (
+            self.cursor_type == "box"
+            and has_char_under_cursor
+            and self.cursor_alpha < 0
+        ):
             cursor_alpha = 110
         elif self.cursor_type == "bar":
             cursor_height = self.cursor_size
