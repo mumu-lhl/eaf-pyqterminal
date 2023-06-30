@@ -341,8 +341,6 @@ class QTerminalWidget(QWidget):
         clear_rect = QRectF(0, start_y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
-        all_background = set()
-
         line = screen.get_line(line_num)
 
         pre_char = pyte.screens.Char("")
@@ -395,15 +393,12 @@ class QTerminalWidget(QWidget):
             if char:
                 pre_char = char
                 same_text = char.data
-                all_background.add(char.bg)
 
         if line_num == self.rows - 1:
             start_y += self.char_height
             height = self.height() - start_y
-            brush = all_background.pop() if len(all_background) == 1 else "default"
-
             clear_rect = QRectF(0, start_y, self.width(), height)
-            painter.fillRect(clear_rect, self.get_brush(brush))
+            painter.fillRect(clear_rect, self.get_brush("default"))
 
     def paint_cursor(self, painter: QPainter):
         screen = self.backend.screen
