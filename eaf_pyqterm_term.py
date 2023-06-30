@@ -447,6 +447,7 @@ class QTerminalScreen(HistoryScreen):
             self._copy_selection()
             return
 
+        self.marker = ()
         self.fake_marker = False
         old_virtual_cursor_x, old_virtual_cursor_y, old_max_virtual_cursor_x = (
             self.virtual_cursor.x,
