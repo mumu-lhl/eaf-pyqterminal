@@ -22,14 +22,14 @@
 import math
 from enum import Enum
 
-import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
-from PyQt6.QtCore import QLineF, QRectF, Qt
+from PyQt6.QtCore import QEvent, QLineF, QRectF, Qt
 from PyQt6.QtGui import (
     QBrush,
     QColor,
+    QCursor,
     QFont,
     QFontDatabase,
     QFontMetricsF,
@@ -41,6 +41,8 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QWidget
 from pyte.screens import Cursor
+
+import eaf_pyqterm_backend as backend
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -95,6 +97,8 @@ class QTerminalWidget(QWidget):
 
         self.ensure_font_exist()
 
+        self.installEventFilter(self)
+
         for name, color_str in color_schema:
             if name == "cursor":
                 self.cursor_color = color_str
@@ -137,6 +141,8 @@ class QTerminalWidget(QWidget):
 
         self.backend = backend.Backend(self.columns, self.rows)
         self.pixmap = QPixmap(self.width(), self.height())
+
+        self.send = self.backend.send
 
         self.startTimer(self.refresh_ms)
 
@@ -204,40 +210,9 @@ class QTerminalWidget(QWidget):
         return brush
 
     def pixel_to_position(self, x, y):
-        col = int(x / self.char_width)
+        column = int(x / self.char_width)
         row = int(y / self.char_height)
-        return col, row
-
-    def resizeEvent(self, event):
-        width = self.width()
-        height = self.height()
-        self.columns, self.rows = self.pixel_to_position(width, height)
-        self.backend.resize(self.columns, self.rows)
-        self.pixmap = QPixmap(width, height)
-        self.paint_pixmap()
-
-    def timerEvent(self, event):
-        cursor = self.backend.screen.get_cursor()
-        if (
-            not self.backend.screen.dirty
-            and self.cursor.x == cursor.x
-            and self.cursor.y == cursor.y
-            and self.cursor.hidden == cursor.hidden
-        ):
-            return
-
-        self.paint_pixmap()
-        self.update()
-
-        title = self.backend.title
-        if title != self.title:
-            self.title = title
-            self.change_title(f"Term [{title}]")
-
-        directory = self.backend.getcwd()
-        if directory and directory != self.directory:
-            self.directory = directory
-            eval_in_emacs("eaf--change-default-directory", [self.buffer_id, directory])
+        return column, row
 
     def paint_text(self, painter: QPainter):
         screen = self.backend.screen
@@ -247,8 +222,8 @@ class QTerminalWidget(QWidget):
 
         # dirty will change when traversing
         for _ in range(len(screen.dirty)):
-            line_num = screen.dirty.pop()
-            self.paint_line_text(painter, line_num)
+            y = screen.dirty.pop()
+            self.paint_line_text(painter, y)
 
     def check_draw_together(
         self, pre_char: pyte.screens.Char, char: pyte.screens.Char
@@ -330,45 +305,46 @@ class QTerminalWidget(QWidget):
             line = QLineF(start_x, start_y, start_x + width, start_y)
             painter.drawLine(line)
 
-    def paint_line_text(self, painter: QPainter, line_num: int):
-        if line_num >= self.rows:
+    def paint_line_text(self, painter: QPainter, y: int):
+        if y >= self.rows:
             return
 
         start_x = 0
-        start_y = line_num * self.char_height
+        start_y = y * self.char_height
         screen = self.backend.screen
 
         clear_rect = QRectF(0, start_y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
-        line = screen.get_line(line_num)
+        line = screen.get_line(y)
 
         pre_char = pyte.screens.Char("")
+        selection = screen.get_selection(y)
+        pre_in_selection = 0 in selection
         is_two_width = False
         real_is_two_width = False
         same_text = ""
 
-        for col in range(screen.columns + 1):
-            if col == screen.columns:
+        for column in range(screen.columns + 1):
+            if column == screen.columns:
                 char = None
             else:
-                char = line[col]
+                char = line[column]
 
             if char and char.data == "":
                 continue
 
-            is_two_width = char and line[col + 1].data == ""
-            in_selection = screen.in_selection(col, line_num)
+            is_two_width = char and line[column + 1].data == ""
 
-            if col == 0:
-                pre_in_selection = in_selection
+            if char:
+                in_selection = column in selection
 
             if (
                 char
                 and self.check_draw_together(pre_char, char)
-                and pre_in_selection == in_selection
                 and not is_two_width
                 and not real_is_two_width
+                and pre_in_selection == in_selection
             ):
                 same_text += char.data
                 continue
@@ -388,13 +364,13 @@ class QTerminalWidget(QWidget):
 
             start_x += text_width
             real_is_two_width = is_two_width
-            pre_in_selection = in_selection
 
             if char:
                 pre_char = char
                 same_text = char.data
+                pre_in_selection = in_selection
 
-        if line_num == self.rows - 1:
+        if y == self.rows - 1:
             start_y += self.char_height
             height = self.height() - start_y
             clear_rect = QRectF(0, start_y, self.width(), height)
@@ -415,11 +391,11 @@ class QTerminalWidget(QWidget):
 
         line = screen.get_line(cursor.y)
         text_width = 0
-        for col in range(cursor.x):
-            char = line[col].data
+        for column in range(cursor.x):
+            char = line[column].data
             if char == "":
                 continue
-            text_width += self.get_text_width(char, line[col + 1].data == "")
+            text_width += self.get_text_width(char, line[column + 1].data == "")
 
         cursor_width = (
             self.char_width * 2 if line[cursor.x + 1].data == "" else self.char_width
@@ -462,12 +438,59 @@ class QTerminalWidget(QWidget):
     def focusProxy(self):
         return self
 
-    def send(self, data):
-        self.backend.send(data)
+    def get_cursor_absolute_position(self):
+        pos = self.mapFromGlobal(
+            QCursor.pos()
+        )  # map global coordinate to widget coordinate.
+        return self.pixel_to_position(pos.x(), pos.y())
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.drawPixmap(0, 0, self.pixmap)
+
+    def resizeEvent(self, event):
+        width = self.width()
+        height = self.height()
+        self.columns, self.rows = self.pixel_to_position(width, height)
+        self.backend.resize(self.columns, self.rows)
+        self.pixmap = QPixmap(width, height)
+        self.paint_pixmap()
+
+    def timerEvent(self, event):
+        cursor = self.backend.screen.get_cursor()
+        screen = self.backend.screen
+
+        if (
+            not screen.dirty
+            and not screen.cursor_dirty
+            and self.cursor.x == cursor.x
+            and self.cursor.y == cursor.y
+            and self.cursor.hidden == cursor.hidden
+        ):
+            return
+
+        if (
+            screen.cursor_dirty
+            and self.cursor.x == cursor.x
+            and self.cursor.y == cursor.y
+        ):
+            painter = QPainter(self.pixmap)
+            screen.cursor_dirty = False
+            self.paint_cursor(painter)
+        else:
+            self.paint_pixmap()
+
+        self.update()
+
+        title = self.backend.title
+        if title != self.title:
+            self.title = title
+            self.change_title(f"Term [{title}]")
+
+        directory = self.backend.getcwd()
+        if directory and directory != self.directory:
+            self.directory = directory
+            eval_in_emacs("eaf--change-default-directory", [self.buffer_id, directory])
 
     def keyPressEvent(self, event: QKeyEvent):
         text = str(event.text())
@@ -513,6 +536,31 @@ class QTerminalWidget(QWidget):
             self.backend.screen.scroll_down(line_num)
 
         self.update()
+
+    def eventFilter(self, obj, event):
+        screen = self.backend.screen
+
+        if event.type() == QEvent.Type.MouseButtonPress:
+            x, y = self.get_cursor_absolute_position()
+            self.toggle_cursor_move_mode(True)
+            screen.move_to_position(x, y)
+            screen.marker = (x, y + screen.base)
+            screen.mouse = True
+
+            self.grabMouse()
+        elif event.type() == QEvent.Type.MouseMove:
+            x, y = self.get_cursor_absolute_position()
+            screen.move_to_position(x, y)
+        elif event.type() == QEvent.Type.MouseButtonRelease:
+            screen.fake_marker = True
+
+            if screen.marker == (screen.virtual_cursor.x, screen.virtual_cursor.y):
+                screen.cursor_dirty = True
+                screen.marker = ()
+
+            self.releaseMouse()
+
+        return False
 
     @interactive
     def yank_text(self):
@@ -588,8 +636,8 @@ class QTerminalWidget(QWidget):
         self.backend.screen.toggle_mark()
 
     @interactive
-    def toggle_cursor_move_mode(self):
-        self.backend.screen.toggle_cursor_move_mode()
+    def toggle_cursor_move_mode(self, status=None):
+        self.backend.screen.toggle_cursor_move_mode(status)
         eval_in_emacs(
             "eaf--toggle-cursor-move-mode",
             ["'t" if self.backend.screen.cursor_move_mode else "'nil"],

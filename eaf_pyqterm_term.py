@@ -21,6 +21,7 @@
 
 import re
 
+import pyte
 from core.utils import *
 from playsound import playsound
 from pyte.screens import Cursor, HistoryScreen
@@ -29,7 +30,7 @@ from pyte.streams import ByteStream
 BELL_SOUND_PATH = get_emacs_vars(("eaf-pyqterminal-bell-sound-path",))[0]
 
 
-def get_regexp(thing):
+def get_regexp(thing: str):
     if thing == "word":
         return re.compile("[\s,\._()=*\"'\[\]/-]")
     elif thing == "symbol":
@@ -51,32 +52,35 @@ class QTerminalScreen(HistoryScreen):
         self.in_history = False
 
         self.cursor_move_mode = False
+        self.cursor_dirty = False
+        self.fake_marker = False
+        self.mouse = False
+        self.first_move = True
         self.virtual_cursor = Cursor(0, 0)
         self.old_cursor = Cursor(0, 0)
         self.old_marker_cursor = Cursor(0, 0)
         self.max_virtual_cursor_x = 0
         self.marker = ()
-        self.fake_marker = False
-        self.first_move = True
+        self.last_update_line = ()
 
-    def absolute_y(self, line_num):
+    def absolute_y(self, line_num: int) -> int:
         return self.base + line_num
 
     @property
-    def at_top(self):
+    def at_top(self) -> int:
         return self.base == 0 and self.virtual_cursor.y == 0
 
     @property
-    def at_bottom(self):
+    def at_bottom(self) -> int:
         return (
             not self.in_history
             and self.virtual_cursor.y + 1 == self.get_last_blank_line()
         )
 
-    def bell(self):
+    def bell(self) -> None:
         playsound(BELL_SOUND_PATH, False)
 
-    def scroll_up(self, line_num):
+    def scroll_up(self, line_num: int) -> None:
         if self.is_buffer:
             return
 
@@ -90,7 +94,7 @@ class QTerminalScreen(HistoryScreen):
         if self.base != old_base:
             self.dirty.update(range(self.lines))
 
-    def scroll_down(self, line_num):
+    def scroll_down(self, line_num: int) -> None:
         if self.is_buffer:
             return
 
@@ -106,14 +110,14 @@ class QTerminalScreen(HistoryScreen):
         if self.base != old_base:
             self.dirty.update(range(self.lines))
 
-    def scroll_to_begin(self):
+    def scroll_to_begin(self) -> None:
         if self.is_buffer:
             return
 
         self.scroll_up(self.base)
         self.virtual_cursor.x, self.virtual_cursor.y = 0, 0
 
-    def scroll_to_bottom(self):
+    def scroll_to_bottom(self) -> None:
         if self.is_buffer:
             return
 
@@ -128,7 +132,7 @@ class QTerminalScreen(HistoryScreen):
         )
         self.jump_x(self.virtual_cursor.y)
 
-    def get_line(self, line_num, absolute=False):
+    def get_line(self, line_num: int, absolute: bool = False):
         top_length = len(self.history.top)
 
         if not self.in_history:
@@ -145,28 +149,34 @@ class QTerminalScreen(HistoryScreen):
         if history_line_num <= top_length - 1:
             return self.history.top[history_line_num]
         else:
-            return self.buffer[self.base - top_length + line_num]
+            return self.buffer[history_line_num - top_length]
 
-    def get_cursor(self):
+    def get_cursor(self) -> pyte.screens.Cursor:
         return self.virtual_cursor if self.cursor_move_mode else self.cursor
 
     def get_line_display(
-        self, line_num, *, in_buffer=False, start=0, end=None, absolute=False
-    ):
+        self,
+        line_num: int,
+        *,
+        in_buffer: bool = False,
+        start: int = 0,
+        end: int | None = None,
+        absolute: bool = False
+    ) -> int:
         if end is None:
             end = self.columns
 
         line = self.buffer[line_num] if in_buffer else self.get_line(line_num, absolute)
         return "".join(line[x].data for x in range(start, end))
 
-    def get_last_blank_line(self):
+    def get_last_blank_line(self) -> int:
         for y in range(self.lines - 1, -1, -1):
             if self.get_line_display(y, in_buffer=True).strip() != "":
                 return y + 1
 
         return 0
 
-    def get_end_x(self, line_num):
+    def get_end_x(self, line_num) -> int:
         line = self.get_line(line_num)
         for x in range(self.columns - 1, -1, -1):
             if line[x].data != " ":
@@ -174,7 +184,7 @@ class QTerminalScreen(HistoryScreen):
 
         return 0
 
-    def resize(self, lines=None, columns=None):
+    def resize(self, lines: int | None = None, columns: int | None = None) -> None:
         lines = lines or self.lines
         columns = columns or self.columns
 
@@ -209,20 +219,28 @@ class QTerminalScreen(HistoryScreen):
 
         self.lines, self.columns = lines, columns
 
-    def toggle_cursor_move_mode(self):
-        if self.cursor_move_mode is True and self.in_history:
+    def toggle_cursor_move_mode(self, status: bool) -> None:
+        status = not self.cursor_move_mode if status is None else status
+
+        if status is False and self.in_history:
             self.base = len(self.history.top)
             self.in_history = False
             self.dirty.update(range(self.lines))
+        elif status is True:
+            self.cursor_dirty = True
 
-        self.cursor_move_mode = not self.cursor_move_mode
+        self.cursor_move_mode = status
         self.virtual_cursor.x, self.virtual_cursor.y = self.cursor.x, self.cursor.y
         self.first_move = True
-        if self.marker != ():
+        self.fake_marker = False
+
+        if status and self.cursor_move_mode:
+            return
+        elif self.marker != ():
             self.marker = ()
             self.dirty.update(range(self.lines))
 
-    def jump_x(self, y):
+    def jump_x(self, y: int) -> None:
         if self.first_move:
             self.first_move = False
             self.max_virtual_cursor_x = self.virtual_cursor.x
@@ -234,7 +252,7 @@ class QTerminalScreen(HistoryScreen):
             if max_x < self.virtual_cursor.x:
                 self.virtual_cursor.x = max_x
 
-    def next_line(self):
+    def next_line(self) -> None:
         y = self.virtual_cursor.y + 1
 
         if not self.in_history and y == self.get_last_blank_line():
@@ -244,20 +262,22 @@ class QTerminalScreen(HistoryScreen):
             self.scroll_down(1)
         else:
             self.virtual_cursor.y = y
+            self.dirty.add(y)
 
         self.jump_x(self.virtual_cursor.y)
 
-    def previous_line(self):
+    def previous_line(self) -> None:
         y = self.virtual_cursor.y - 1
 
         if y < 0:
             self.scroll_up(1)
         else:
             self.virtual_cursor.y = y
+            self.dirty.add(y)
 
         self.jump_x(self.virtual_cursor.y)
 
-    def next_character(self, num=1):
+    def next_character(self, num: int = 1) -> None:
         x = self.virtual_cursor.x + num
         end_x = self.get_end_x(self.virtual_cursor.y)
         line = self.get_line(self.virtual_cursor.y)
@@ -274,7 +294,7 @@ class QTerminalScreen(HistoryScreen):
             self.virtual_cursor.x = x
             self.max_virtual_cursor_x = x
 
-    def previous_character(self, num=1):
+    def previous_character(self, num: int = 1) -> None:
         x = self.virtual_cursor.x - num
         end_x = self.get_end_x(self.virtual_cursor.y - 1)
         line = self.get_line(self.virtual_cursor.y)
@@ -291,7 +311,9 @@ class QTerminalScreen(HistoryScreen):
             self.virtual_cursor.x = x
             self.max_virtual_cursor_x = x
 
-    def find(self, y, pattern, start, reverse=False):
+    def find(
+        self, y: int, pattern: re.Pattern, start: int, reverse: bool = False
+    ) -> int | None:
         line = self.get_line(y)
         iterator = (
             range(start - 1, -2, -1) if reverse else range(start, self.get_end_x(y) + 1)
@@ -309,7 +331,7 @@ class QTerminalScreen(HistoryScreen):
 
         return None
 
-    def next_thing(self, thing, first=True):
+    def next_thing(self, thing: str, first: bool = True) -> None:
         start = self.virtual_cursor.x if first else 0
         x = self.find(self.virtual_cursor.y, get_regexp(thing), start)
 
@@ -325,7 +347,7 @@ class QTerminalScreen(HistoryScreen):
         else:
             self.next_character(x)
 
-    def previous_thing(self, thing, first=True):
+    def previous_thing(self, thing: str, first: bool = True) -> None:
         start = (
             self.virtual_cursor.x if first else self.get_end_x(self.virtual_cursor.y)
         )
@@ -343,15 +365,23 @@ class QTerminalScreen(HistoryScreen):
             self.move_beginning_of_line()
             self.next_character(x + 1)
 
-    def move_beginning_of_line(self):
+    def move_beginning_of_line(self) -> None:
         self.virtual_cursor.x = 0
         self.max_virtual_cursor_x = 0
 
-    def move_end_of_line(self):
+    def move_end_of_line(self) -> None:
         self.virtual_cursor.x = self.get_end_x(self.virtual_cursor.y)
         self.max_virtual_cursor_x = self.virtual_cursor.x
 
-    def toggle_mark(self):
+    def update_line(self, y1: int, y2: int) -> None:
+        if y1 == y2:
+            self.dirty.add(y1)
+        else:
+            start = min(y1, y2)
+            end = max(y1, y2)
+            self.dirty.update(range(start, end + 1))
+
+    def toggle_mark(self) -> None:
         cursor = self.virtual_cursor
         if self.marker != ():
             (_, old_marker_y) = self.marker
@@ -359,21 +389,21 @@ class QTerminalScreen(HistoryScreen):
         else:
             old_marker_y = cursor.y
 
-        if self.marker == (cursor.x, self.absolute_y(cursor.y)) or self.fake_marker:
+        if (
+            self.marker == (cursor.x, self.absolute_y(cursor.y))
+            or self.fake_marker
+            and not self.mouse
+        ):
             self.marker = ()
+            self.cursor_dirty = True
         else:
             self.marker = (cursor.x, self.absolute_y(cursor.y))
 
-        if old_marker_y == cursor.y:
-            self.dirty.add(cursor.y)
-        elif old_marker_y > cursor.y:
-            self.dirty.update(range(cursor.y, old_marker_y + 1))
-        elif old_marker_y < cursor.y:
-            self.dirty.update(range(old_marker_y, cursor.y + 1))
+            self.update_line(cursor.y, old_marker_y)
 
-    def in_selection(self, x, y):
+    def get_selection(self, y: int) -> range:
         if self.marker == ():
-            return False
+            return range(0)
 
         cursor = self.virtual_cursor
 
@@ -381,7 +411,7 @@ class QTerminalScreen(HistoryScreen):
             if cursor.x != self.old_cursor.x or cursor.y != self.old_cursor.y:
                 self.toggle_mark()
                 self.fake_marker = False
-                return False
+                return range(0)
             else:
                 cursor = self.old_marker_cursor
 
@@ -389,35 +419,24 @@ class QTerminalScreen(HistoryScreen):
         marker_y -= self.base
         end_x = self.get_end_x(y)
 
-        if x >= end_x:
-            return False
-
         if cursor.y < y < marker_y or cursor.y > y > marker_y:
-            return True
+            return range(0, end_x)
+        elif cursor.y == y == marker_y:
+            return range(min(cursor.x, marker_x), max(cursor.x, marker_x))
+        elif y == cursor.y:
+            if marker_y < cursor.y:
+                return range(0, cursor.x)
+            else:
+                return range(cursor.x, end_x)
+        elif y == marker_y:
+            if marker_y < cursor.y:
+                return range(marker_x, end_x)
+            else:
+                return range(0, marker_x)
 
-        in_one_line = cursor.y == marker_y == y
-        cursor_at_left = cursor.y < marker_y or (
-            cursor.y == marker_y and cursor.x < marker_x
-        )
+        return range(0)
 
-        if cursor_at_left:
-            if in_one_line and cursor.x <= x < marker_x:
-                return True
-            elif not in_one_line and (
-                (y == cursor.y and x >= cursor.x) or (y == marker_y and x < marker_x)
-            ):
-                return True
-        else:
-            if in_one_line and marker_x <= x < cursor.x:
-                return True
-            elif not in_one_line and (
-                (y == cursor.y and x < cursor.x) or (y == marker_y and x >= marker_x)
-            ):
-                return True
-
-        return False
-
-    def _copy(self, start, end):
+    def _copy(self, start: int, end: int) -> None:
         text = ""
 
         for y in range(start[1], end[1] + 1):
@@ -430,7 +449,7 @@ class QTerminalScreen(HistoryScreen):
         message_to_emacs("Copy text")
         set_clipboard_text(text)
 
-    def _copy_selection(self):
+    def _copy_selection(self) -> None:
         if self.marker == ():
             message_to_emacs("Nothing selected")
             return
@@ -450,18 +469,22 @@ class QTerminalScreen(HistoryScreen):
         self.toggle_mark()
         self.toggle_mark()
 
-    def copy_thing(self, thing):
+        self.mouse = False
+
+    def copy_thing(self, thing: str) -> None:
         if thing == "selection":
             self._copy_selection()
             return
 
         self.marker = ()
         self.fake_marker = False
-        old_virtual_cursor_x, old_virtual_cursor_y, old_max_virtual_cursor_x = (
+        old_virtual_cursor_x, old_virtual_cursor_y = (
             self.virtual_cursor.x,
             self.virtual_cursor.y,
-            self.max_virtual_cursor_x,
         )
+        old_max_virtual_cursor_x = self.max_virtual_cursor_x
+        x = self.virtual_cursor.x - 1
+        x = 0 if x < 0 else x
 
         after_match = bool(
             get_regexp(thing).match(
@@ -501,8 +524,11 @@ class QTerminalScreen(HistoryScreen):
 
         self._copy(start, end)
 
-    def copy_word(self):
-        self.copy_thing("word")
-
-    def copy_symbol(self):
-        self.copy_thing("symbol")
+    def move_to_position(self, x: int, y: int) -> None:
+        last_blank_line = self.get_last_blank_line()
+        if not self.in_history and y >= last_blank_line:
+            return
+        self.update_line(y, self.virtual_cursor.y)
+        self.virtual_cursor.x, self.virtual_cursor.y = x, y
+        self.max_virtual_cursor_x = x
+        self.jump_x(y)
