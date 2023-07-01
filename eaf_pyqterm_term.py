@@ -418,7 +418,7 @@ class QTerminalScreen(HistoryScreen):
         for y in range(start[1], end[1] + 1):
             start_x = start[0] if y == start[1] else 0
             end_x = end[0] if y == end[1] else self.columns
-            text += self.get_line_display(y, start=start_x, end=end_x, absolute=True)
+            text += self.get_line_display(y, in_buffer=True, start=start_x, end=end_x, absolute=True)
 
         message_to_emacs("Copy text")
         set_clipboard_text(text)
