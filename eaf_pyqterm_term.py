@@ -210,7 +210,7 @@ class QTerminalScreen(HistoryScreen):
         self.lines, self.columns = lines, columns
 
     def toggle_cursor_move_mode(self):
-        if self.cursor_move_mode is True and self.history:
+        if self.cursor_move_mode is True and self.in_history:
             self.base = len(self.history.top)
             self.in_history = False
             self.dirty.update(range(self.lines))
