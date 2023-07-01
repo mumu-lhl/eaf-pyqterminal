@@ -210,6 +210,11 @@ class QTerminalScreen(HistoryScreen):
         self.lines, self.columns = lines, columns
 
     def toggle_cursor_move_mode(self):
+        if self.cursor_move_mode is True and self.history:
+            self.base = len(self.history.top)
+            self.in_history = False
+            self.dirty.update(range(self.lines))
+
         self.cursor_move_mode = not self.cursor_move_mode
         self.virtual_cursor.x, self.virtual_cursor.y = self.cursor.x, self.cursor.y
         self.first_move = True
@@ -418,7 +423,9 @@ class QTerminalScreen(HistoryScreen):
         for y in range(start[1], end[1] + 1):
             start_x = start[0] if y == start[1] else 0
             end_x = end[0] if y == end[1] else self.columns
-            text += self.get_line_display(y, in_buffer=True, start=start_x, end=end_x, absolute=True)
+            text += self.get_line_display(
+                y, in_buffer=self.is_buffer, start=start_x, end=end_x, absolute=True
+            )
 
         message_to_emacs("Copy text")
         set_clipboard_text(text)
@@ -440,6 +447,7 @@ class QTerminalScreen(HistoryScreen):
             end = (marker_x, marker_y)
 
         self._copy(start, end)
+        self.toggle_mark()
         self.toggle_mark()
 
     def copy_thing(self, thing):
@@ -477,11 +485,11 @@ class QTerminalScreen(HistoryScreen):
             self.virtual_cursor.x, self.virtual_cursor.y = 0, old_virtual_cursor_y
 
         self.toggle_mark()
-        start = (self.virtual_cursor.x, self.virtual_cursor.y)
+        start = (self.virtual_cursor.x, self.virtual_cursor.y + self.base)
 
         self.next_thing(thing)
 
-        end = self.virtual_cursor.x, self.virtual_cursor.y
+        end = (self.virtual_cursor.x, self.virtual_cursor.y + self.base)
         self.virtual_cursor.x = old_virtual_cursor_x
         self.old_cursor.x, self.old_cursor.y = (
             self.virtual_cursor.x,
