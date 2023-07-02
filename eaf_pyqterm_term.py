@@ -20,6 +20,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+import time
+import threading
 
 import pyte
 from core.utils import *
@@ -43,14 +45,15 @@ class QTerminalStream(ByteStream):
 
 
 class QTerminalScreen(HistoryScreen):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, is_buffer, columns, lines, history):
+        super().__init__(columns, lines, history)
 
-        self.is_buffer = False
+        self.is_buffer = is_buffer
 
         self.base = 0
         self.in_history = False
 
+        self.auto_scroll_lock = True
         self.cursor_move_mode = False
         self.before_is_cursor_move_mode = False
         self.cursor_dirty = False
@@ -63,6 +66,7 @@ class QTerminalScreen(HistoryScreen):
         self.max_virtual_cursor_x = 0
         self.marker = ()
         self.last_update_line = ()
+        self.current_thread = None
 
     def absolute_y(self, line_num: int) -> int:
         return self.base + line_num
@@ -546,3 +550,37 @@ class QTerminalScreen(HistoryScreen):
         self.virtual_cursor.x, self.virtual_cursor.y = x, y
         self.max_virtual_cursor_x = x
         self.jump_x(y)
+
+    def set_marker(self, x, y):
+        end_x = self.get_end_x(y)
+        last_blank_line = self.get_last_blank_line()
+
+        x = x if x <= end_x else end_x
+        y = y if y < last_blank_line else last_blank_line
+
+        self.marker = (x, y + self.base)
+
+    def _auto_scroll_up(self) -> None:
+        while not self.auto_scroll_lock:
+            self.scroll_up(1)
+            time.sleep(0.05)
+
+    def _auto_scroll_down(self) -> None:
+        while not self.auto_scroll_lock:
+            self.scroll_down(1)
+            time.sleep(0.05)
+
+    def auto_scroll_up(self) -> None:
+        self.auto_scroll_lock = False
+        self.current_thread = threading.Thread(target=self._auto_scroll_up)
+        self.current_thread.start()
+
+    def auto_scroll_down(self) -> None:
+        self.auto_scroll_lock = False
+        self.current_thread = threading.Thread(target=self._auto_scroll_down)
+        self.current_thread.start()
+
+    def disable_auto_scroll(self) -> None:
+        self.auto_scroll_lock = True
+        self.current_thread.join()
+        self.current_thread = None

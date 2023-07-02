@@ -442,7 +442,7 @@ class QTerminalWidget(QWidget):
         pos = self.mapFromGlobal(
             QCursor.pos()
         )  # map global coordinate to widget coordinate.
-        return self.pixel_to_position(pos.x(), pos.y())
+        return pos.x(), pos.y()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -542,22 +542,35 @@ class QTerminalWidget(QWidget):
 
         if event.type() == QEvent.Type.MouseButtonPress:
             x, y = self.get_cursor_absolute_position()
+            column, row = self.pixel_to_position(x, y)
             screen.before_is_cursor_move_mode = screen.cursor_move_mode
             self.toggle_cursor_move_mode(True)
-            screen.move_to_position(x, y)
-            screen.marker = (x, y + screen.base)
+            screen.move_to_position(column, row)
+            screen.set_marker(column, row)
             screen.mouse = True
 
             self.grabMouse()
         elif event.type() == QEvent.Type.MouseMove:
             x, y = self.get_cursor_absolute_position()
-            screen.move_to_position(x, y)
+
+            if y < 0 and screen.auto_scroll_lock:
+                screen.auto_scroll_up()
+            elif y > self.height() and screen.auto_scroll_lock:
+                screen.auto_scroll_down()
+            elif 0 < y < self.height() and screen.current_thread:
+                screen.disable_auto_scroll()
+
+            column, row = self.pixel_to_position(x, y)
+            screen.move_to_position(column, row)
         elif event.type() == QEvent.Type.MouseButtonRelease:
             screen.fake_marker = True
 
             if screen.marker == (screen.virtual_cursor.x, screen.virtual_cursor.y):
                 screen.cursor_dirty = True
                 screen.marker = ()
+
+            if screen.current_thread:
+                screen.disable_auto_scroll()
 
             self.releaseMouse()
 
