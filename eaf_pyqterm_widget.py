@@ -542,6 +542,7 @@ class QTerminalWidget(QWidget):
 
         if event.type() == QEvent.Type.MouseButtonPress:
             x, y = self.get_cursor_absolute_position()
+            screen.before_is_cursor_move_mode = screen.cursor_move_mode
             self.toggle_cursor_move_mode(True)
             screen.move_to_position(x, y)
             screen.marker = (x, y + screen.base)
@@ -638,10 +639,6 @@ class QTerminalWidget(QWidget):
     @interactive
     def toggle_cursor_move_mode(self, status=None):
         self.backend.screen.toggle_cursor_move_mode(status)
-        eval_in_emacs(
-            "eaf--toggle-cursor-move-mode",
-            ["'t" if self.backend.screen.cursor_move_mode else "'nil"],
-        )
 
     @interactive
     def copy_text(self):

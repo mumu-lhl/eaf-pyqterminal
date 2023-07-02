@@ -52,6 +52,7 @@ class QTerminalScreen(HistoryScreen):
         self.in_history = False
 
         self.cursor_move_mode = False
+        self.before_is_cursor_move_mode = False
         self.cursor_dirty = False
         self.fake_marker = False
         self.mouse = False
@@ -162,7 +163,7 @@ class QTerminalScreen(HistoryScreen):
         start: int = 0,
         end: int | None = None,
         absolute: bool = False
-    ) -> int:
+    ) -> str:
         if end is None:
             end = self.columns
 
@@ -219,24 +220,26 @@ class QTerminalScreen(HistoryScreen):
 
         self.lines, self.columns = lines, columns
 
-    def toggle_cursor_move_mode(self, status: bool) -> None:
-        status = not self.cursor_move_mode if status is None else status
+    def toggle_cursor_move_mode(self, status: None | bool) -> None:
+        if status is None:
+            status = not self.cursor_move_mode
 
-        if status is False and self.in_history:
+        if not status and self.in_history:
             self.base = len(self.history.top)
             self.in_history = False
             self.dirty.update(range(self.lines))
-        elif status is True:
+        elif status:
             self.cursor_dirty = True
 
         self.cursor_move_mode = status
         self.virtual_cursor.x, self.virtual_cursor.y = self.cursor.x, self.cursor.y
+        self.virtual_cursor.hidden = False
         self.first_move = True
         self.fake_marker = False
 
-        if status and self.cursor_move_mode:
-            return
-        elif self.marker != ():
+        eval_in_emacs("eaf--toggle-cursor-move-mode", ["'t" if status else "'nil"])
+
+        if self.marker != ():
             self.marker = ()
             self.dirty.update(range(self.lines))
 
@@ -442,9 +445,11 @@ class QTerminalScreen(HistoryScreen):
         for y in range(start[1], end[1] + 1):
             start_x = start[0] if y == start[1] else 0
             end_x = end[0] if y == end[1] else self.columns
-            text += self.get_line_display(
+            line = self.get_line_display(
                 y, in_buffer=self.is_buffer, start=start_x, end=end_x, absolute=True
             )
+            line_strip = line.rstrip()
+            text += line if line == line_strip else line_strip + "\n"
 
         message_to_emacs("Copy text")
         set_clipboard_text(text)
@@ -469,7 +474,16 @@ class QTerminalScreen(HistoryScreen):
         self.toggle_mark()
         self.toggle_mark()
 
-        self.mouse = False
+        if self.mouse:
+            self.mouse = False
+
+            if not self.before_is_cursor_move_mode:
+                if self.in_history:
+                    self.cursor_move_mode = False
+                    self.virtual_cursor.hidden = True
+                    eval_in_emacs("eaf--toggle-cursor-move-mode", ["'nil"])
+                else:
+                    self.toggle_cursor_move_mode(False)
 
     def copy_thing(self, thing: str) -> None:
         if thing == "selection":
