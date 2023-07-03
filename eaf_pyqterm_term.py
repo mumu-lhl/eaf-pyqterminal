@@ -248,6 +248,8 @@ class QTerminalScreen(HistoryScreen):
             self.dirty.update(range(self.lines))
 
     def jump_x(self, y: int) -> None:
+        """ Recalibrate the x of the virtual cursor """
+
         if self.first_move:
             self.first_move = False
             self.max_virtual_cursor_x = self.virtual_cursor.x
@@ -546,6 +548,7 @@ class QTerminalScreen(HistoryScreen):
         last_blank_line = self.get_last_blank_line()
         if not self.in_history and y >= last_blank_line:
             return
+        y = self.lines - 1 if y >= self.lines else y
         self.update_line(y, self.virtual_cursor.y)
         self.virtual_cursor.x, self.virtual_cursor.y = x, y
         self.max_virtual_cursor_x = x
@@ -563,11 +566,17 @@ class QTerminalScreen(HistoryScreen):
     def _auto_scroll_up(self) -> None:
         while not self.auto_scroll_lock:
             self.scroll_up(1)
+
+            # Need to recalibrate the x of the virtual cursor to avoid
+            # the virtual cursor being displayed at the empty end of a line
+            self.jump_x(self.virtual_cursor.y)
+
             time.sleep(0.05)
 
     def _auto_scroll_down(self) -> None:
         while not self.auto_scroll_lock:
             self.scroll_down(1)
+            self.jump_x(self.virtual_cursor.y)
             time.sleep(0.05)
 
     def auto_scroll_up(self) -> None:
