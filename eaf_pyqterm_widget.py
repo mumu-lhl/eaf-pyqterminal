@@ -217,10 +217,10 @@ class QTerminalWidget(QWidget):
     def paint_text(self, painter: QPainter):
         screen = self.backend.screen
 
-        # redraw the old and new cursor line
+        # Redraw the old and new cursor's line
         screen.dirty.update([self.cursor.y, screen.get_cursor().y])
 
-        # dirty will change when traversing
+        # Dirty will change when traversing
         for _ in range(len(screen.dirty)):
             y = screen.dirty.pop()
             self.paint_line_text(painter, y)

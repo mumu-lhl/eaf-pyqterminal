@@ -86,6 +86,7 @@ class QTerminalScreen(HistoryScreen):
         playsound(BELL_SOUND_PATH, False)
 
     def scroll_up(self, line_num: int) -> None:
+        # Do not scroll the screen when the class used as a buffer
         if self.is_buffer:
             return
 
@@ -248,7 +249,7 @@ class QTerminalScreen(HistoryScreen):
             self.dirty.update(range(self.lines))
 
     def jump_x(self, y: int) -> None:
-        """ Recalibrate the x of the virtual cursor """
+        """Recalibrate the x of the virtual cursor."""
 
         if self.first_move:
             self.first_move = False
@@ -308,7 +309,6 @@ class QTerminalScreen(HistoryScreen):
         end_x = self.get_end_x(self.virtual_cursor.y - 1)
         line = self.get_line(self.virtual_cursor.y)
 
-        # Skip two width character
         if line[x].data == "":
             x -= 1
 
