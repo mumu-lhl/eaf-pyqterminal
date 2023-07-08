@@ -44,6 +44,7 @@ class AppBuffer(Buffer):
         term.buffer_id = buffer_id
         term.change_title = self.change_title
         term.backend.close_buffer = self.close_buffer
+        self.resize_view = term.resize_view
 
         self.add_widget(term)
         self.build_all_methods(term)

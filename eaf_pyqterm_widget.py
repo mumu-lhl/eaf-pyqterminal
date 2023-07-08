@@ -444,17 +444,17 @@ class QTerminalWidget(QWidget):
         )  # map global coordinate to widget coordinate.
         return pos.x(), pos.y()
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.drawPixmap(0, 0, self.pixmap)
-
-    def resizeEvent(self, event):
+    def resize_view(self):
         width = self.width()
         height = self.height()
         self.columns, self.rows = self.pixel_to_position(width, height)
         self.backend.resize(self.columns, self.rows)
         self.pixmap = QPixmap(width, height)
         self.paint_pixmap()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.drawPixmap(0, 0, self.pixmap)
 
     def timerEvent(self, event):
         cursor = self.backend.screen.get_cursor()
