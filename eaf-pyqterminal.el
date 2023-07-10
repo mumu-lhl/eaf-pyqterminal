@@ -25,6 +25,11 @@ Recommend use Nerd font to render icon in terminal."
   :type 'string
   :group 'eaf-pyqterminal)
 
+(defcustom eaf-pyqterminal-enable-bell-sound t
+  "Enable bell sound."
+  :type 'bool
+  :group 'eaf-pyqterminal)
+
 (defcustom eaf-pyqterminal-bell-sound-path
   (concat eaf-pyqterminal-path "bell.ogg")
   "Bell sound path of EAF PyQterminal."

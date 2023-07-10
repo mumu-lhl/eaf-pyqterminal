@@ -25,11 +25,12 @@ import threading
 
 import pyte
 from core.utils import *
-from playsound import playsound
 from pyte.screens import Cursor, HistoryScreen
 from pyte.streams import ByteStream
 
-BELL_SOUND_PATH = get_emacs_vars(("eaf-pyqterminal-bell-sound-path",))[0]
+ENABLE_BELL_SOUND, BELL_SOUND_PATH = get_emacs_vars(
+    ("eaf-pyqterminal-enable-bell-sound", "eaf-pyqterminal-bell-sound-path")
+)
 
 
 def get_regexp(thing: str):
@@ -83,7 +84,10 @@ class QTerminalScreen(HistoryScreen):
         )
 
     def bell(self) -> None:
-        playsound(BELL_SOUND_PATH, False)
+        if ENABLE_BELL_SOUND:
+            from playsound import playsound
+
+            playsound(BELL_SOUND_PATH, False)
 
     def scroll_up(self, line_num: int) -> None:
         # Do not scroll the screen when the class used as a buffer
