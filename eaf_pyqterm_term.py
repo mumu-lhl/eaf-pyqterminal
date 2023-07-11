@@ -20,17 +20,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-import time
 import threading
+import time
 
 import pyte
 from core.utils import *
+from PyQt6.QtWidgets import QApplication
 from pyte.screens import Cursor, HistoryScreen
 from pyte.streams import ByteStream
-
-ENABLE_BELL_SOUND, BELL_SOUND_PATH = get_emacs_vars(
-    ("eaf-pyqterminal-enable-bell-sound", "eaf-pyqterminal-bell-sound-path")
-)
 
 
 def get_regexp(thing: str):
@@ -84,10 +81,7 @@ class QTerminalScreen(HistoryScreen):
         )
 
     def bell(self) -> None:
-        if ENABLE_BELL_SOUND:
-            from playsound import playsound
-
-            playsound(BELL_SOUND_PATH, False)
+        QApplication.beep()
 
     def scroll_up(self, line_num: int) -> None:
         # Do not scroll the screen when the class used as a buffer

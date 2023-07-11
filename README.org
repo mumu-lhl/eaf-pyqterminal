@@ -17,7 +17,6 @@ It is recommended to install [[https://www.nerdfonts.com][Nerd Fonts]] to suppor
 *** Dependency List
 
 | Package                 | Description                   |
-| playsound               | play bell sound               |
 | pyte                    | terminal emulator             |
 | psutil                  | get child process information |
 | pywinpty (only Windows) | pty on Windows                |
