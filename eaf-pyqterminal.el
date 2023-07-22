@@ -108,6 +108,7 @@ If alpha < 0, don't set alpha for cursor."
     ("M->" . "scroll_to_bottom")
     ("M-DEL" . "eaf-send-alt-backspace-sequence")
     ("M-<backspace>" . "eaf-send-alt-backspace-sequence")
+    ("C-M-f" . "open_link")
     ("<escape>" . "eaf-send-escape-key"))
   "The keybinding of EAF PyQterminal."
   :type 'cons)
@@ -131,6 +132,8 @@ If alpha < 0, don't set alpha for cursor."
     ("y" . "copy_text")
     ("i" . "copy_word")
     ("I" . "copy_symbol")
+    ("f" . "open_link")
+    ("q" . "toggle_cursor_move_mode")
     ("C-a" . "move_beginning_of_line")
     ("C-e" . "move_end_of_line")
     ("C-n" . "next_line")
@@ -145,8 +148,10 @@ If alpha < 0, don't set alpha for cursor."
     ("M-v" . "scroll_up_page")
     ("M-c" . "toggle_cursor_move_mode")
     ("M-w" . "copy_text")
+    ("M-d" . "copy_word")
+    ("M-D" . "copy_symbol")
     ("C-SPC" . "toggle_mark")
-    ("q" . "toggle_cursor_move_mode"))
+    ("C-M-f" . "open_link"))
   "The keybinding of EAF PyQterminal Cursor Move Mode.
 
 Cursor Move Mode allows you to move cursor in the screen."

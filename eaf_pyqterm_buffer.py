@@ -1,23 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2023 Mumulhl
-#
-# Author:     Mumulhl <mumulhl@duck.com>
-# Maintainer: Mumulhl <mumulhl@duck.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright (C) 2023 by Mumulhl <mumulhl@duck.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 import json
 import os
@@ -44,7 +29,12 @@ class AppBuffer(Buffer):
         term.buffer_id = buffer_id
         term.change_title = self.change_title
         term.backend.close_buffer = self.close_buffer
+        term.send_input_message = self.send_input_message
+        self.term = term
         self.resize_view = term.resize_view
+        self.fetch_marker_callback = term.fetch_marker_callback
+        self.handle_input_response = term.handle_input_response
+        self.cancel_input_response = term.cancel_input_response
 
         self.add_widget(term)
         self.build_all_methods(term)

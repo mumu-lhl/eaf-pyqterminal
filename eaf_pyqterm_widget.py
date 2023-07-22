@@ -22,9 +22,11 @@
 import math
 from enum import Enum
 
+import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
+from eaf_pyqterm_utils import generate_random_key, match_link
 from PyQt6.QtCore import QEvent, QLineF, QRectF, Qt
 from PyQt6.QtGui import (
     QBrush,
@@ -41,8 +43,6 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QWidget
 from pyte.screens import Cursor
-
-import eaf_pyqterm_backend as backend
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -83,6 +83,7 @@ class QTerminalWidget(QWidget):
             self.cursor_type,
             self.cursor_size,
             self.cursor_alpha,
+            self.marker_letters,
         ) = get_emacs_vars(
             (
                 "eaf-pyqterminal-font-size",
@@ -92,6 +93,7 @@ class QTerminalWidget(QWidget):
                 "eaf-pyqterminal-cursor-type",
                 "eaf-pyqterminal-cursor-size",
                 "eaf-pyqterminal-cursor-alpha",
+                "eaf-marker-letters",
             )
         )
 
@@ -129,6 +131,9 @@ class QTerminalWidget(QWidget):
         self.directory = ""
         self.title = ""
 
+        self.link_markers: dict[str, str] = {}
+        self.link_markers_position: list[int] = []
+
         self.cursor = Cursor(0, 0)
 
         self.font = self.get_font()
@@ -140,9 +145,8 @@ class QTerminalWidget(QWidget):
         self.underline_pos = self.fm.underlinePos()
 
         self.backend = backend.Backend(self.columns, self.rows)
-        self.pixmap = QPixmap(self.width(), self.height())
 
-        self.send = self.backend.send
+        self.pixmap = QPixmap(self.width(), self.height())
 
         self.startTimer(self.refresh_ms)
 
@@ -209,7 +213,7 @@ class QTerminalWidget(QWidget):
         self.brushes[color_name] = brush
         return brush
 
-    def pixel_to_position(self, x, y):
+    def pixel_to_position(self, x: int, y: int) -> (int, int):
         column = int(x / self.char_width)
         row = int(y / self.char_height)
         return column, row
@@ -390,27 +394,23 @@ class QTerminalWidget(QWidget):
         )
 
         line = screen.get_line(cursor.y)
-        text_width = 0
+        cursor_x = 0
+        cursor_y = cursor.y * self.char_height
         for column in range(cursor.x):
             char = line[column].data
             if char == "":
                 continue
-            text_width += self.get_text_width(char, line[column + 1].data == "")
+            cursor_x += self.get_text_width(char, line[column + 1].data == "")
 
+        cursor_height = self.char_height
+        cursor_alpha = self.cursor_alpha
         cursor_width = (
             self.char_width * 2 if line[cursor.x + 1].data == "" else self.char_width
         )
-        cursor_height = self.char_height
-        cursor_x = text_width
-        cursor_y = cursor.y * self.char_height
-        cursor_alpha = self.cursor_alpha
-
-        has_char_under_cursor = line[cursor.x].data != " "
-
         if (
             self.cursor_type == "box"
-            and has_char_under_cursor
-            and self.cursor_alpha < 0
+            and line[cursor.x].data != " "
+            and cursor_alpha < 0
         ):
             cursor_alpha = 110
         elif self.cursor_type == "bar":
@@ -432,13 +432,109 @@ class QTerminalWidget(QWidget):
         self.paint_text(painter)
         self.paint_cursor(painter)
 
-    def get_text_width(self, text: str, is_two_width=False):
+    def get_text_width(self, text: str, is_two_width: bool = False) -> float:
         return self.char_width * 2 if is_two_width else self.fm.horizontalAdvance(text)
 
     def focusProxy(self):
         return self
 
-    def get_cursor_absolute_position(self):
+    def handle_input_response(self, callback_tag: str, result_content: str):
+        if callback_tag == "open_link":
+            self._open_link(result_content)
+
+    def cancel_input_response(self, callback_tag: str):
+        if callback_tag == "open_link":
+            self.cleanup_link_markers()
+
+    def fetch_marker_callback(self) -> list[str]:
+        key_list = list(self.link_markers.keys())
+        return list(map(lambda key: key.lower(), key_list))
+
+    def render_marker(self, markers: dict[str, dict[str, str]]):
+        painter = QPainter(self.pixmap)
+        painter.setPen(self.get_pen("black"))
+        for y, markers in markers.items():
+            line = self.backend.screen.get_line(y)
+            x_position, y_position = 0, y * self.char_height
+            x_display = 0
+            for x in range(self.rows):
+                char = line[x].data
+                if char == "":
+                    continue
+                x_display += 1
+                x_position += self.get_text_width(char, line[x + 1].data == "")
+
+                marker = markers.get(0 if x == 0 else x_display)
+                if marker:
+                    rect = QRectF(
+                        0 if x == 0 else x_position,
+                        y_position,
+                        self.get_text_width(marker),
+                        self.char_height,
+                    )
+                    painter.fillRect(rect, self.get_brush("yellow"))
+                    painter.drawText(rect, align, marker)
+                    self.update()
+
+    def get_link_markers(self):
+        text = ""
+        count = 0
+        links = {}
+        continue_line = False
+        screen = self.backend.screen
+
+        for y in range(0, self.rows):
+            line = screen.get_line_display(y)
+            line_strip = line.rstrip()
+            old_continue_line = continue_line
+            continue_line = line == line_strip
+            if old_continue_line != continue_line or old_continue_line == continue_line == False:
+                links_in_line, count_in_line = match_link(text)
+                links[y - 1] = links_in_line
+                count += count_in_line
+                text = ""
+            if continue_line:
+                text += line_strip
+            else:
+                text = line_strip
+
+        if count == 0:
+            message_to_emacs("No link found")
+            return
+
+        key_list = generate_random_key(count, self.marker_letters)
+        markers = {}
+        count = 0
+        for y, links in links.items():
+            for x, link in links.items():
+                key = key_list[count]
+                self.link_markers[key] = link
+                if x >= self.rows:
+                    line_down_number = x // self.rows
+                    x -= line_down_number * self.rows
+                    y += line_down_number
+                markers[y] = {x: key}
+                count += 1
+        self.link_markers_position = list(markers.keys())
+
+        self.render_marker(markers)
+
+    @PostGui()
+    def cleanup_link_markers(self):
+        self.link_markers = {}
+        # Doing so because can't direct update screen dirty
+        painter = QPainter(self.pixmap)
+        for y in self.link_markers_position:
+            self.paint_line_text(painter, y)
+        self.update()
+
+    def _open_link(self, marker: str):
+        link = self.link_markers.get(marker.upper())
+        if link:
+            open_url_in_new_tab(link)
+        self.cleanup_link_markers()
+
+    def get_cursor_absolute_position(self) -> (int, int):
         pos = self.mapFromGlobal(
             QCursor.pos()
         )  # map global coordinate to widget coordinate.
@@ -452,13 +548,14 @@ class QTerminalWidget(QWidget):
         self.pixmap = QPixmap(width, height)
         self.paint_pixmap()
 
-    def paintEvent(self, event):
+    def paintEvent(self, _):
         painter = QPainter(self)
         painter.drawPixmap(0, 0, self.pixmap)
 
-    def timerEvent(self, event):
-        cursor = self.backend.screen.get_cursor()
+    @PostGui()
+    def timerEvent(self, _):
         screen = self.backend.screen
+        cursor = screen.get_cursor()
 
         if (
             not screen.dirty
@@ -503,25 +600,27 @@ class QTerminalWidget(QWidget):
 
         self.backend.screen.scroll_to_bottom()
 
+        send = self.backend.send
+
         if (text or s) and modifier == Qt.KeyboardModifier.ControlModifier:
             # 'a' => '\x01', 'A' => '\x01'
             text = chr(ord(text.lower()) - 96)
-            self.send(text)
+            send(text)
             return
         if (text or s) and modifier == Qt.KeyboardModifier.AltModifier:
             text = s if s else text
-            self.send(pyte.control.ESC + text)
+            send(pyte.control.ESC + text)
             return
 
         if text and not s:
-            self.send(text)
+            send(text)
             return
 
         if s:
             event.accept()
-            self.send(s)
+            send(s)
 
-    def closeEvent(self, event):
+    def closeEvent(self, _):
         self.backend.close()
 
     def wheelEvent(self, event: QWheelEvent):
@@ -537,7 +636,7 @@ class QTerminalWidget(QWidget):
 
         self.update()
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, _, event: QEvent):
         screen = self.backend.screen
 
         if event.type() == QEvent.Type.MouseButtonPress:
@@ -579,7 +678,7 @@ class QTerminalWidget(QWidget):
     @interactive
     def yank_text(self):
         text = get_clipboard_text()
-        self.send(text)
+        self.backend.send(text)
 
     @interactive
     def scroll_up(self):
@@ -664,3 +763,9 @@ class QTerminalWidget(QWidget):
     @interactive
     def copy_symbol(self):
         self.backend.screen.copy_thing("symbol")
+
+    @interactive
+    def open_link(self):
+        self.get_link_markers()
+        if self.link_markers:
+            self.send_input_message("Open Link: ", "open_link", "marker")
