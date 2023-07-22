@@ -488,7 +488,10 @@ class QTerminalWidget(QWidget):
             line_strip = line.rstrip()
             old_continue_line = continue_line
             continue_line = line == line_strip
-            if old_continue_line != continue_line or old_continue_line == continue_line == False:
+            if (
+                old_continue_line != continue_line
+                or old_continue_line == continue_line == False
+            ):
                 links_in_line, count_in_line = match_link(text)
                 links[y - 1] = links_in_line
                 count += count_in_line

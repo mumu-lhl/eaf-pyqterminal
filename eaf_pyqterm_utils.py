@@ -18,8 +18,12 @@ def generate_random_key(count: int, letters: str) -> list[str]:
             count -= 1
     return key_list
 
+
 import re
+
 link_pattern = re.compile(r"(https?://(?:[\w-]+\.)+[\w-]+(?:/[\w/?%&=-]*)?)")
+
+
 def match_link(text: str) -> (dict[int, str], int):
     start = 0
     count = 0
