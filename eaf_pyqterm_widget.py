@@ -628,9 +628,6 @@ class QTerminalWidget(QWidget):
             event.accept()
             send(s)
 
-    def closeEvent(self, _):
-        self.backend.close()
-
     def wheelEvent(self, event: QWheelEvent):
         y = event.angleDelta().y()
 
