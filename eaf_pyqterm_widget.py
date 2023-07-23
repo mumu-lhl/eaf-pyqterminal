@@ -22,11 +22,9 @@
 import math
 from enum import Enum
 
-import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
-from eaf_pyqterm_utils import generate_random_key, match_link
 from PyQt6.QtCore import QEvent, QLineF, QRectF, Qt
 from PyQt6.QtGui import (
     QBrush,
@@ -43,6 +41,9 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QWidget
 from pyte.screens import Cursor
+
+import eaf_pyqterm_backend as backend
+from eaf_pyqterm_utils import generate_random_key, match_link
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -438,10 +439,12 @@ class QTerminalWidget(QWidget):
     def focusProxy(self):
         return self
 
+    @PostGui()
     def handle_input_response(self, callback_tag: str, result_content: str):
         if callback_tag == "open_link":
             self._open_link(result_content)
 
+    @PostGui()
     def cancel_input_response(self, callback_tag: str):
         if callback_tag == "open_link":
             self.cleanup_link_markers()
@@ -457,7 +460,7 @@ class QTerminalWidget(QWidget):
             line = self.backend.screen.get_line(y)
             x_position, y_position = 0, y * self.char_height
             x_display = 0
-            for x in range(self.rows):
+            for x in range(self.columns):
                 char = line[x].data
                 if char == "":
                     continue
@@ -490,7 +493,7 @@ class QTerminalWidget(QWidget):
             continue_line = line == line_strip
             if (
                 old_continue_line != continue_line
-                or old_continue_line == continue_line == False
+                or old_continue_line == continue_line is False
             ):
                 links_in_line, count_in_line = match_link(text)
                 links[y - 1] = links_in_line
@@ -509,14 +512,16 @@ class QTerminalWidget(QWidget):
         markers = {}
         count = 0
         for y, links in links.items():
+            if links:
+                markers[y] = {}
             for x, link in links.items():
                 key = key_list[count]
                 self.link_markers[key] = link
-                if x >= self.rows:
-                    line_down_number = x // self.rows
-                    x -= line_down_number * self.rows
+                if x >= self.columns:
+                    line_down_number = x // self.columns
+                    x -= line_down_number * self.columns
                     y += line_down_number
-                markers[y] = {x: key}
+                markers[y].update({x: key})
                 count += 1
         self.link_markers_position = list(markers.keys())
 
