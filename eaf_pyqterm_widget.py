@@ -20,11 +20,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
+import time
 from enum import Enum
 
+import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
+from eaf_pyqterm_utils import generate_random_key, match_link
 from PyQt6.QtCore import QEvent, QLineF, QRectF, Qt
 from PyQt6.QtGui import (
     QBrush,
@@ -41,9 +44,6 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QWidget
 from pyte.screens import Cursor
-
-import eaf_pyqterm_backend as backend
-from eaf_pyqterm_utils import generate_random_key, match_link
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -134,6 +134,10 @@ class QTerminalWidget(QWidget):
 
         self.link_markers: dict[str, str] = {}
         self.link_markers_position: list[int] = []
+
+        self.last_mouse_click_time = 0
+        self.last_mouse_click_position = (0, 0)
+        self.first_mouse_move = True
 
         self.cursor = Cursor(0, 0)
 
@@ -421,7 +425,7 @@ class QTerminalWidget(QWidget):
             cursor_width = self.cursor_size
 
         brush = self.get_brush(self.cursor_color, cursor_alpha)
-        if screen.marker != ():
+        if screen.marker and not screen.mouse:
             brush = self.get_brush("yellow", cursor_alpha)
 
         painter.setPen(Qt.PenStyle.NoPen)
@@ -641,40 +645,66 @@ class QTerminalWidget(QWidget):
 
         self.update()
 
+    def auto_scroll(self, y):
+        screen = self.backend.screen
+        if y < 0 and screen.auto_scroll_lock:
+            screen.auto_scroll_up()
+        elif y > self.height() and screen.auto_scroll_lock:
+            screen.auto_scroll_down()
+        elif 0 < y < self.height() and screen.current_thread:
+            screen.disable_auto_scroll()
+
     def eventFilter(self, _, event: QEvent):
         screen = self.backend.screen
 
         if event.type() == QEvent.Type.MouseButtonPress:
             x, y = self.get_cursor_absolute_position()
             column, row = self.pixel_to_position(x, y)
-            screen.before_is_cursor_move_mode = screen.cursor_move_mode
-            self.toggle_cursor_move_mode(True)
             screen.move_to_position(column, row)
-            screen.set_marker(column, row)
-            screen.mouse = True
+            self.last_mouse_click_time = time.time()
+            self.last_mouse_click_position = (x, y)
+
+            if screen.cursor_move_mode:
+                screen.before_is_cursor_move_mode = True
+
+                if screen.marker:
+                    screen.toggle_mark()
+                if screen.marker:
+                    screen.toggle_mark()
 
             self.grabMouse()
         elif event.type() == QEvent.Type.MouseMove:
             x, y = self.get_cursor_absolute_position()
-
-            if y < 0 and screen.auto_scroll_lock:
-                screen.auto_scroll_up()
-            elif y > self.height() and screen.auto_scroll_lock:
-                screen.auto_scroll_down()
-            elif 0 < y < self.height() and screen.current_thread:
-                screen.disable_auto_scroll()
-
             column, row = self.pixel_to_position(x, y)
+            if y < 0:
+                row = -1
             screen.move_to_position(column, row)
-        elif event.type() == QEvent.Type.MouseButtonRelease:
-            screen.fake_marker = True
+            screen.absolute_virtual_cursor_y = screen.base + row
 
-            if screen.marker == (screen.virtual_cursor.x, screen.virtual_cursor.y):
-                screen.cursor_dirty = True
-                screen.marker = ()
+            if self.first_mouse_move:
+                self.first_mouse_move = False
+                screen.before_is_cursor_move_mode = screen.cursor_move_mode
+                self.toggle_cursor_move_mode(True)
+                screen.set_marker(column, row)
+
+                if not screen.before_is_cursor_move_mode:
+                    screen.mouse = True
+
+            self.auto_scroll(y)
+        elif event.type() == QEvent.Type.MouseButtonRelease:
+            self.first_mouse_move = True
 
             if screen.current_thread:
                 screen.disable_auto_scroll()
+
+            x, y = self.get_cursor_absolute_position()
+
+            if not screen.before_is_cursor_move_mode:
+                screen.fake_marker = True
+                screen.cursor_move_mode = False
+                screen.sync_cursor()
+
+                eval_in_emacs("eaf--toggle-cursor-move-mode", ["'nil"])
 
             self.releaseMouse()
 
@@ -751,7 +781,9 @@ class QTerminalWidget(QWidget):
 
     @interactive
     def toggle_mark(self):
-        self.backend.screen.toggle_mark()
+        screen = self.backend.screen
+        screen.toggle_mark()
+        message_to_emacs("Mark set" if screen.marker else "Mark deactivated")
 
     @interactive
     def toggle_cursor_move_mode(self, status=None):

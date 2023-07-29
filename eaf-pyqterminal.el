@@ -106,6 +106,7 @@ If alpha < 0, don't set alpha for cursor."
     ("M-v" . "scroll_up_page")
     ("M-<" . "scroll_to_begin")
     ("M->" . "scroll_to_bottom")
+    ("M-w" . "copy_text")
     ("M-DEL" . "eaf-send-alt-backspace-sequence")
     ("M-<backspace>" . "eaf-send-alt-backspace-sequence")
     ("C-M-f" . "open_link")
