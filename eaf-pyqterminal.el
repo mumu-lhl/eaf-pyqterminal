@@ -61,12 +61,13 @@ If alpha < 0, don't set alpha for cursor."
     ("yellow" "#c4a000")
     ("brightblack" "#555753")
     ("brightblue" "#729fcf")
+    ("brightbrown" "#fce94f")
     ("brightcyan" "#34e2e2")
     ("brightgreen" "#8ae234")
     ("brightmagenta" "#ad7fa8")
     ("brightred" "#ef2929")
     ("brightwhite" "#eeeeec")
-    ("brightyellow" "#fce94f"))
+    ("brightyellow" "#c4a000"))
   "Color schema for EAF PyQterminal."
   :type 'alist
   :group 'eaf-pyqterminal)

@@ -188,7 +188,7 @@ class QTerminalWidget(QWidget):
         elif color_name == "default":
             return "default"
 
-        color = QColor(color_name) if color_name[0] == "#" else QColor("#" + color_name)
+        color = QColor(color_name if color_name[0] == "#" else "#" + color_name)
         if alpha >= 0:
             color.setAlpha(alpha)
             color_name = alpha_color_name
