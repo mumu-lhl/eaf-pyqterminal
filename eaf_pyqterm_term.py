@@ -420,7 +420,6 @@ class QTerminalScreen(HistoryScreen):
             return range(0)
 
         cursor = self.virtual_cursor
-        cursor_x = cursor.x
 
         if self.fake_marker:
             if cursor.x != self.old_cursor.x or cursor.y != self.old_cursor.y:
@@ -434,7 +433,7 @@ class QTerminalScreen(HistoryScreen):
         end_x = self.get_end_x(y)
 
         if marker_y < 0:
-            marker_x = (0,)
+            marker_x = 0
         elif marker_y >= self.lines:
             marker_x = self.get_end_x(self.lines - 1)
 
@@ -444,12 +443,12 @@ class QTerminalScreen(HistoryScreen):
         if cursor.y < y < marker_y or cursor.y > y > marker_y:
             return range(0, end_x)
         elif cursor.y == y == marker_y:
-            return range(min(cursor_x, marker_x), max(cursor_x, marker_x))
+            return range(min(cursor.x, marker_x), max(cursor.x, marker_x))
         elif y == cursor.y:
             if marker_y < cursor.y:
-                return range(0, cursor_x)
+                return range(0, cursor.x)
             else:
-                return range(cursor_x, end_x)
+                return range(cursor.x, end_x)
         elif y == marker_y:
             if marker_y < cursor.y:
                 return range(marker_x, end_x)
@@ -541,7 +540,8 @@ class QTerminalScreen(HistoryScreen):
 
         cursor.x = old_virtual_cursor_x
         self.sync_cursor()
-        self.old_marker_cursor.x, self.old_marker_cursor.y = end
+        self.old_marker_cursor.x = end[0]
+        self.old_marker_cursor.y = end[1] - self.base
         self.max_virtual_cursor_x = old_max_virtual_cursor_x
         self.fake_marker = True
 
