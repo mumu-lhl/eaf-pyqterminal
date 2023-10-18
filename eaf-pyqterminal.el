@@ -49,6 +49,13 @@ If alpha < 0, don't set alpha for cursor."
   :type 'integer
   :group 'eaf-pyqterminal)
 
+(defcustom eaf-pyqterminal-device-pixel-ratio 1.0
+  "Device pixel ratio of EAF PyQterminal.
+
+If you feel the display is blurry, try setting this variable to 2.0 ."
+  :type 'float
+  :group 'eaf-pyqterminal)
+
 (defcustom eaf-pyqterminal-color-schema
   ;; Tango Dark
   '(("blue" "#3465a4")

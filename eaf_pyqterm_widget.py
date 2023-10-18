@@ -84,6 +84,7 @@ class QTerminalWidget(QWidget):
             self.cursor_type,
             self.cursor_size,
             self.cursor_alpha,
+            self.device_pixel_ratio,
             self.marker_letters,
         ) = get_emacs_vars(
             (
@@ -94,6 +95,7 @@ class QTerminalWidget(QWidget):
                 "eaf-pyqterminal-cursor-type",
                 "eaf-pyqterminal-cursor-size",
                 "eaf-pyqterminal-cursor-alpha",
+                "eaf-pyqterminal-device-pixel-ratio",
                 "eaf-marker-letters",
             )
         )
@@ -152,7 +154,7 @@ class QTerminalWidget(QWidget):
         self.backend = backend.Backend(self.columns, self.rows)
 
         self.pixmap = QPixmap(self.width(), self.height())
-        self.pixmap.setDevicePixelRatio(1)
+        self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
 
         self.startTimer(self.refresh_ms)
 
@@ -561,7 +563,7 @@ class QTerminalWidget(QWidget):
         self.backend.resize(self.columns, self.rows)
 
         self.pixmap = QPixmap(width, height)
-        self.pixmap.setDevicePixelRatio(1)
+        self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
         self.paint_pixmap()
 
     def paintEvent(self, _):
