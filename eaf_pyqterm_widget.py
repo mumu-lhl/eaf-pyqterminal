@@ -153,7 +153,7 @@ class QTerminalWidget(QWidget):
 
         self.backend = backend.Backend(self.columns, self.rows)
 
-        self.pixmap = QPixmap(self.width() * self.device_pixel_ratio, self.height() * self.device_pixel_ratio)
+        self.pixmap = QPixmap(int(self.width() * self.device_pixel_ratio), int(self.height() * self.device_pixel_ratio))
         self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
 
         self.startTimer(self.refresh_ms)
@@ -562,7 +562,7 @@ class QTerminalWidget(QWidget):
         self.columns, self.rows = self.pixel_to_position(width, height)
         self.backend.resize(self.columns, self.rows)
 
-        self.pixmap = QPixmap(width * self.device_pixel_ratio, height * self.device_pixel_ratio)
+        self.pixmap = QPixmap(int(width * self.device_pixel_ratio), int(height * self.device_pixel_ratio))
         self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
         self.paint_pixmap()
 
