@@ -79,7 +79,6 @@ class QTerminalWidget(QWidget):
         (
             self.font_size,
             self.font_family,
-            color_schema,
             self.refresh_ms,
             self.cursor_type,
             self.cursor_size,
@@ -90,7 +89,6 @@ class QTerminalWidget(QWidget):
             (
                 "eaf-pyqterminal-font-size",
                 "eaf-pyqterminal-font-family",
-                "eaf-pyqterminal-color-schema",
                 "eaf-pyqterminal-refresh-ms",
                 "eaf-pyqterminal-cursor-type",
                 "eaf-pyqterminal-cursor-size",
@@ -103,6 +101,8 @@ class QTerminalWidget(QWidget):
         self.ensure_font_exist()
 
         self.installEventFilter(self)
+
+        color_schema = get_emacs_func_result("eaf-pyqterminal-get-color-schema", [])
 
         for name, color_str in color_schema:
             if name == "cursor":
@@ -117,16 +117,12 @@ class QTerminalWidget(QWidget):
 
         self.colors["foreground"] = QColor(theme_foreground_color)
         self.colors["background"] = QColor(theme_background_color)
-        self.colors["black"] = (
-            QColor(theme_background_color)
-            if self.theme_mode == "dark"
-            else QColor("#000000")
-        )
-        self.colors["white"] = (
-            QColor(theme_background_color)
-            if self.theme_mode == "light"
-            else QColor("#FFFFFF")
-        )
+        if self.theme_mode == "dark":
+            self.colors["black"] = self.colors["background"]
+            self.colors["white"] = QColor("#FFFFFF")
+        else:
+            self.colors["black"] = QColor("#000000")
+            self.colors["white"] = self.colors["background"]
 
         self.pens["default"] = QPen(self.colors["foreground"])
         self.brushes["default"] = QBrush(self.colors["background"])
@@ -153,7 +149,10 @@ class QTerminalWidget(QWidget):
 
         self.backend = backend.Backend(self.columns, self.rows)
 
-        self.pixmap = QPixmap(self.width() * self.device_pixel_ratio, self.height() * self.device_pixel_ratio)
+        self.pixmap = QPixmap(
+            self.width() * self.device_pixel_ratio,
+            self.height() * self.device_pixel_ratio,
+        )
         self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
 
         self.startTimer(self.refresh_ms)
@@ -562,7 +561,9 @@ class QTerminalWidget(QWidget):
         self.columns, self.rows = self.pixel_to_position(width, height)
         self.backend.resize(self.columns, self.rows)
 
-        self.pixmap = QPixmap(width * self.device_pixel_ratio, height * self.device_pixel_ratio)
+        self.pixmap = QPixmap(
+            width * self.device_pixel_ratio, height * self.device_pixel_ratio
+        )
         self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
         self.paint_pixmap()
 

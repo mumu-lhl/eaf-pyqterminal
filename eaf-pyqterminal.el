@@ -56,6 +56,11 @@ If you feel the display is blurry, try setting it to 2."
   :type 'integer
   :group 'eaf-pyqterminal)
 
+(defcustom eaf-pyqterminal-color-schema-from-emacs nil
+  "Whether color schema from emacs."
+  :type 'booleanp
+  :group 'eaf-pyqterminal)
+
 (defcustom eaf-pyqterminal-color-schema
   ;; Tango Dark
   '(("blue" "#3465a4")
@@ -213,6 +218,27 @@ If ALWAYS-NEW is non-nil, always open a new terminal for the dedicated DIR."
       (eaf--gen-keybinding-map eaf-pyqterminal-cursor-move-mode-keybinding t)
     (eaf--gen-keybinding-map eaf-pyqterminal-keybinding))
   (setq eaf--buffer-map-alist (list (cons t eaf-mode-map))))
+
+(defun eaf-pyqterminal-get-color-schema ()
+  (if eaf-pyqterminal-color-schema-from-emacs
+      `(("blue" ,(face-foreground 'term-color-blue))
+	("brown" ,(face-foreground 'term-color-yellow))
+	("cyan" ,(face-foreground 'term-color-cyan))
+	("cursor" ,(face-foreground 'cursor))
+	("green" ,(face-foreground 'term-color-green))
+	("magenta" ,(face-foreground 'term-color-magenta))
+	("red" ,(face-foreground 'term-color-red))
+	("yellow" ,(face-foreground 'term-color-yellow))
+	("brightblack" ,(face-foreground 'term-color-black))
+	("brightblue" ,(face-foreground 'term-color-blue))
+	("brightbrown" ,(face-foreground 'term-color-yellow))
+	("brightcyan" ,(face-foreground 'term-color-cyan))
+	("brightgreen" ,(face-foreground 'term-color-green))
+	("brightmagenta" ,(face-foreground 'term-color-magenta))
+	("brightred" ,(face-foreground 'term-color-red))
+	("brightwhite" ,(face-foreground 'term-color-white))
+	("brightyellow" ,(face-foreground 'term-color-yellow)))
+    eaf-pyqterminal-color-schema))
 
 ;;;###autoload
 (defun eaf-open-pyqterminal ()
