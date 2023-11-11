@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (C) 2023 by Mumulhl <mumulhl@duck.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -21,7 +19,9 @@ def generate_random_key(count: int, letters: str) -> list[str]:
 
 import re
 
-link_pattern = re.compile(r"(https?://(?:[\w-]+\.)+[\w-]+(?:/[\w/?%&=-]*)?)")
+LINK_PATTERN = re.compile(r"(https?://(?:[\w-]+\.)+[\w-]+(?:/[\w/?%&=-]*)?)")
+WORD_PATTERN = re.compile("[\s,\._()=*\"'\[\]/-]")
+SYMBOL_PATTERN = re.compile("\s")
 
 
 def match_link(text: str) -> (dict[int, str], int):
@@ -29,7 +29,7 @@ def match_link(text: str) -> (dict[int, str], int):
     count = 0
     links = {}
     while True:
-        match_pattern = link_pattern.search(text, start)
+        match_pattern = LINK_PATTERN.search(text, start)
         if not match_pattern:
             break
         else:
@@ -37,3 +37,10 @@ def match_link(text: str) -> (dict[int, str], int):
             links[match_pattern.start()] = match_pattern.group()
             start = match_pattern.end()
     return links, count
+
+
+def get_regexp(thing: str):
+    if thing == "word":
+        return WORD_PATTERN
+    elif thing == "symbol":
+        return SYMBOL_PATTERN

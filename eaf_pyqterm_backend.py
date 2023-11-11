@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (C) 2023 by Mumulhl <mumulhl@duck.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -18,11 +16,11 @@ else:
     import struct
     import termios
 
-from eaf_pyqterm_term import QTerminalScreen, QTerminalStream
+from eaf_pyqterm_term import TerminalScreen, TerminalStream
 
 
 class Pty:
-    def __init__(self, width, height):
+    def __init__(self, width, height, argv, start_directory):
         env = os.environ
         env.update(
             {
@@ -34,24 +32,24 @@ class Pty:
         )
 
         if platform == "Windows":
-            self._spawn_winpty(env)
+            self._spawn_winpty(env, argv, start_directory)
         else:
-            self._spawn_pty(env)
+            self._spawn_pty(env, argv, start_directory)
 
-    def _spawn_pty(self, env):
+    def _spawn_pty(self, env, argv, start_directory):
         p_pid, master_fd = pty.fork()
         if p_pid == 0:
-            os.chdir(start_directory)  # noqa: F821
-            os.execvpe(argv[0], argv, env)  # noqa: F821
+            os.chdir(start_directory)
+            os.execvpe(argv[0], argv, env)
         else:
             self.p_fd = master_fd
             self.p_pid = p_pid
             self.pty = os.fdopen(master_fd, "w+b", 0)
 
-    def _spawn_winpty(self, env):
+    def _spawn_winpty(self, env, argv, start_directory):
         self.pty = pty.spawn(
-            list(argv[0]) + argv,  # noqa: F821
-            start_directory,  # noqa: F821
+            list(argv[0]) + argv,
+            start_directory,
             env,
             (env["COLUMNS"], env["LINES"]),
         )
@@ -94,16 +92,16 @@ class Pty:
 
 
 class Backend:
-    def __init__(self, width, height):
-        self.screen = QTerminalScreen(False, width, height, 99999)
-        self.buffer_screen = QTerminalScreen(True, width, height, 99999)
-        self.stream = QTerminalStream(self.screen)
-        self.buffer_stream = QTerminalStream(self.buffer_screen)
+    def __init__(self, width, height, argv, start_directory):
+        self.screen = TerminalScreen(False, width, height, 99999)
+        self.buffer_screen = TerminalScreen(True, width, height, 99999)
+        self.stream = TerminalStream(self.screen)
+        self.buffer_stream = TerminalStream(self.buffer_screen)
 
         self.screen.write_process_input = self.send
         self.buffer_screen.write_process_input = self.send
 
-        self.pty = Pty(width, height)
+        self.pty = Pty(width, height, argv, start_directory)
         self.getcwd = self.pty.getcwd
 
         self.thread = threading.Thread(target=self.read)

@@ -1,23 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-# Copyright (C) 2023 Mumulhl
-#
-# Author:     Mumulhl <mumulhl@duck.com>
-# Maintainer: Mumulhl <mumulhl@duck.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright (C) 2023 by Mumulhl <mumulhl@duck.com>
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 import math
 import time
@@ -67,13 +49,13 @@ LineType = Enum("LineType", ("Underline", "StrikeOut"))
 StyleType = Enum("StyleType", ("Bold", "Italics", "Underline", "StrikeOut"))
 
 
-class QTerminalWidget(QWidget):
-    brushes = {}
-    colors = {}
+class FrontendWidget(QWidget):
+    brush_cache = {}
+    color_cache = {}
     fonts = {}
-    pens = {}
+    pen_cache = {}
 
-    def __init__(self):
+    def __init__(self, argv, start_directory):
         super().__init__()
 
         (
@@ -102,30 +84,7 @@ class QTerminalWidget(QWidget):
 
         self.installEventFilter(self)
 
-        color_schema = get_emacs_func_result("eaf-pyqterminal-get-color-schema", [])
-
-        for name, color_str in color_schema:
-            if name == "cursor":
-                self.cursor_color = color_str
-                continue
-            color = QColor(color_str)
-            self.colors[name] = color
-
-        self.theme_mode = get_emacs_theme_mode()
-        theme_foreground_color = get_emacs_theme_foreground()
-        theme_background_color = get_emacs_theme_background()
-
-        self.colors["foreground"] = QColor(theme_foreground_color)
-        self.colors["background"] = QColor(theme_background_color)
-        if self.theme_mode == "dark":
-            self.colors["black"] = self.colors["background"]
-            self.colors["white"] = QColor("#FFFFFF")
-        else:
-            self.colors["black"] = QColor("#000000")
-            self.colors["white"] = self.colors["background"]
-
-        self.pens["default"] = QPen(self.colors["foreground"])
-        self.brushes["default"] = QBrush(self.colors["background"])
+        self.init_color_schema()
 
         self.directory = ""
         self.title = ""
@@ -147,13 +106,9 @@ class QTerminalWidget(QWidget):
         self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
         self.underline_pos = self.fm.underlinePos()
 
-        self.backend = backend.Backend(self.columns, self.rows)
+        self.backend = backend.Backend(self.columns, self.rows, argv, start_directory)
 
-        self.pixmap = QPixmap(
-            self.width() * self.device_pixel_ratio,
-            self.height() * self.device_pixel_ratio,
-        )
-        self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
+        self.init_pixmap()
 
         self.startTimer(self.refresh_ms)
 
@@ -163,6 +118,35 @@ class QTerminalWidget(QWidget):
             self.font_family = QFontDatabase.systemFont(
                 QFontDatabase.SystemFont.FixedFont
             ).family()
+
+    def init_color_schema(self):
+        color_schema = get_emacs_func_result("eaf-pyqterminal-get-color-schema", [])
+
+        for name, color_name in color_schema:
+            if name == "cursor":
+                self.cursor_color = color_name
+                continue
+            color = QColor(color_name)
+            self.color_cache[name] = color
+
+        theme_mode = get_emacs_theme_mode()
+        theme_background_color = get_emacs_theme_background()
+        if theme_mode == "dark":
+            self.color_cache["black"] = QColor(theme_background_color)
+            self.color_cache["white"] = QColor("#FFFFFF")
+        else:
+            self.color_cache["black"] = QColor("#000000")
+            self.color_cache["white"] = QColor(theme_background_color)
+
+        self.pen_cache["default"] = QPen(self.color_cache["white"])
+        self.brush_cache["default"] = QBrush(self.color_cache["black"])
+
+    def init_pixmap(self):
+        self.pixmap = QPixmap(
+            self.width() * self.device_pixel_ratio,
+            self.height() * self.device_pixel_ratio,
+        )
+        self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
 
     def get_font(self, style: list[StyleType] = []) -> QFont:
         id = str(style)
@@ -183,41 +167,42 @@ class QTerminalWidget(QWidget):
         return font
 
     def get_color(self, color_name: str, alpha: int = -1) -> QColor | str:
-        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
+        alpha_color_name = color_name
+        if alpha >= 0:
+            alpha_color_name = color_name + str(alpha)
 
-        if alpha_color_name in self.colors:
-            return self.colors[color_name]
-        elif color_name == "default":
-            return "default"
+        if alpha_color_name in self.color_cache:
+            return self.color_cache[color_name]
 
         color = QColor(color_name if color_name[0] == "#" else "#" + color_name)
         if alpha >= 0:
             color.setAlpha(alpha)
-            color_name = alpha_color_name
-        self.colors[color_name] = color
+            self.color_cache[alpha_color_name] = color
+
         return color
 
     def get_pen(self, color_name: str) -> QPen:
-        pen = self.pens.get(color_name)
-        if pen:
-            return pen
+        pen = self.pen_cache.get(color_name)
 
-        color = self.get_color(color_name)
-        pen = QPen(color)
-        self.pens[color_name] = pen
+        if not pen:
+            color = self.get_color(color_name)
+            pen = QPen(color)
+            self.pen_cache[color_name] = pen
+
         return pen
 
     def get_brush(self, color_name: str, alpha: int = -1) -> QBrush:
-        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
+        alpha_color_name = color_name
+        if alpha >= 0:
+            alpha_color_name = color_name + str(alpha)
 
-        brush = self.brushes.get(alpha_color_name)
-        if brush:
-            return brush
+        brush = self.brush_cache.get(alpha_color_name)
 
-        color = self.get_color(color_name, alpha)
-        brush = QBrush(color)
-        color_name = alpha_color_name if alpha >= 0 else color_name
-        self.brushes[color_name] = brush
+        if not brush:
+            color = self.get_color(color_name, alpha)
+            brush = QBrush(color)
+            self.brush_cache[alpha_color_name] = brush
+
         return brush
 
     def pixel_to_position(self, x: int, y: int) -> (int, int):
@@ -260,18 +245,7 @@ class QTerminalWidget(QWidget):
         is_two_width: bool,
         in_selection: bool,
     ):
-        if self.theme_mode == "dark":
-            fg = "white" if pre_char.fg == "default" else pre_char.fg
-            bg = "black" if pre_char.bg == "default" else pre_char.bg
-            if in_selection:
-                fg = "black"
-                bg = "white"
-        else:
-            fg = "black" if pre_char.fg == "default" else pre_char.fg
-            bg = "white" if pre_char.bg == "default" else pre_char.bg
-            if in_selection:
-                fg = "white"
-                bg = "black"
+        fg, bg = pre_char.fg, pre_char.bg
 
         if pre_char.reverse and not in_selection:
             fg, bg = bg, fg
@@ -440,7 +414,10 @@ class QTerminalWidget(QWidget):
         self.paint_cursor(painter)
 
     def get_text_width(self, text: str, is_two_width: bool = False) -> float:
-        return self.char_width * 2 if is_two_width else self.fm.horizontalAdvance(text)
+        if is_two_width:
+            return self.char_width * 2
+        else:
+            return self.fm.horizontalAdvance(text)
 
     def focusProxy(self):
         return self
@@ -549,9 +526,7 @@ class QTerminalWidget(QWidget):
         self.cleanup_link_markers()
 
     def get_cursor_absolute_position(self) -> (int, int):
-        pos = self.mapFromGlobal(
-            QCursor.pos()
-        )  # map global coordinate to widget coordinate.
+        pos = self.mapFromGlobal(QCursor.pos())
         return pos.x(), pos.y()
 
     def resize_view(self):
@@ -561,10 +536,7 @@ class QTerminalWidget(QWidget):
         self.columns, self.rows = self.pixel_to_position(width, height)
         self.backend.resize(self.columns, self.rows)
 
-        self.pixmap = QPixmap(
-            width * self.device_pixel_ratio, height * self.device_pixel_ratio
-        )
-        self.pixmap.setDevicePixelRatio(self.device_pixel_ratio)
+        self.init_pixmap()
         self.paint_pixmap()
 
     def paintEvent(self, _):

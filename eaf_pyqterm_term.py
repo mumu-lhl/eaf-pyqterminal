@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (C) 2023 by Mumulhl <mumulhl@duck.com>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -12,24 +10,15 @@ from core.utils import *
 from PyQt6.QtWidgets import QApplication
 from pyte.screens import Cursor, HistoryScreen
 from pyte.streams import ByteStream
-
-word_pattern = re.compile("[\s,\._()=*\"'\[\]/-]")
-symbol_pattern = re.compile("\s")
+from eaf_pyqterm_utils import get_regexp
 
 
-def get_regexp(thing: str):
-    if thing == "word":
-        return word_pattern
-    elif thing == "symbol":
-        return symbol_pattern
-
-
-class QTerminalStream(ByteStream):
+class TerminalStream(ByteStream):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
-class QTerminalScreen(HistoryScreen):
+class TerminalScreen(HistoryScreen):
     def __init__(self, is_buffer, columns, lines, history):
         super().__init__(columns, lines, history)
 
@@ -167,7 +156,7 @@ class QTerminalScreen(HistoryScreen):
         in_buffer: bool = False,
         start: int = 0,
         end: int | None = None,
-        absolute: bool = False
+        absolute: bool = False,
     ) -> str:
         if end is None:
             end = self.columns
