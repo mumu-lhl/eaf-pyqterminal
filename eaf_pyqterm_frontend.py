@@ -135,8 +135,8 @@ class FrontendWidget(QWidget):
             self.color_cache["black"] = QColor(theme_background_color)
             self.color_cache["white"] = QColor("#FFFFFF")
         else:
-            self.color_cache["black"] = QColor("#000000")
-            self.color_cache["white"] = QColor(theme_background_color)
+            self.color_cache["black"] = QColor(theme_background_color)
+            self.color_cache["white"] = QColor("#000000")
 
         self.pen_cache["default"] = QPen(self.color_cache["white"])
         self.brush_cache["default"] = QBrush(self.color_cache["black"])
@@ -167,16 +167,15 @@ class FrontendWidget(QWidget):
         return font
 
     def get_color(self, color_name: str, alpha: int = -1) -> QColor | str:
-        alpha_color_name = color_name
-        if alpha >= 0:
-            alpha_color_name = color_name + str(alpha)
+        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
 
-        if alpha_color_name in self.color_cache:
-            return self.color_cache[color_name]
+        color = self.color_cache.get(alpha_color_name)
 
-        color = QColor(color_name if color_name[0] == "#" else "#" + color_name)
-        if alpha >= 0:
-            color.setAlpha(alpha)
+        if not color:
+            color = QColor(color_name if color_name[0] == "#" else "#" + color_name)
+            if alpha >= 0:
+                color.setAlpha(alpha)
+
             self.color_cache[alpha_color_name] = color
 
         return color
@@ -192,9 +191,7 @@ class FrontendWidget(QWidget):
         return pen
 
     def get_brush(self, color_name: str, alpha: int = -1) -> QBrush:
-        alpha_color_name = color_name
-        if alpha >= 0:
-            alpha_color_name = color_name + str(alpha)
+        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
 
         brush = self.brush_cache.get(alpha_color_name)
 
@@ -219,20 +216,7 @@ class FrontendWidget(QWidget):
         # Dirty will change when traversing
         for _ in range(len(screen.dirty)):
             y = screen.dirty.pop()
-            self.paint_line_text(painter, y)
-
-    def check_draw_together(
-        self, pre_char: pyte.screens.Char, char: pyte.screens.Char
-    ) -> bool:
-        return (
-            pre_char.bg == char.bg
-            and pre_char.fg == char.fg
-            and pre_char.reverse == char.reverse
-            and pre_char.bold == char.bold
-            and pre_char.italics == char.italics
-            and pre_char.underscore == char.underscore
-            and pre_char.strikethrough == char.strikethrough
-        )
+            self.paint_text_of_line(painter, y)
 
     def draw_text(
         self,
@@ -243,11 +227,12 @@ class FrontendWidget(QWidget):
         start_x: float,
         start_y: float,
         is_two_width: bool,
-        in_selection: bool,
+        is_selection: bool,
     ):
-        fg, bg = pre_char.fg, pre_char.bg
+        fg = "white" if pre_char.fg == "default" or is_selection else pre_char.fg
+        bg = "black" if pre_char.bg == "default" or is_selection else pre_char.bg
 
-        if pre_char.reverse and not in_selection:
+        if pre_char.reverse or is_selection:
             fg, bg = bg, fg
 
         if text.strip() == "" and bg == "default":
@@ -290,76 +275,101 @@ class FrontendWidget(QWidget):
             line = QLineF(start_x, start_y, start_x + width, start_y)
             painter.drawLine(line)
 
-    def paint_line_text(self, painter: QPainter, y: int):
-        if y >= self.rows:
-            return
+    def can_draw_together(
+        self,
+        pre_char: pyte.screens.Char,
+        char: pyte.screens.Char,
+        is_selection: bool,
+        pre_is_selection: bool,
+        is_two_width: bool,
+        pre_is_two_width: bool,
+    ) -> bool:
+        is_fg_same = True if pre_is_selection else pre_char.fg == char.fg
+        is_bg_same = True if pre_is_selection else pre_char.bg == char.bg
 
-        start_x = 0
-        start_y = y * self.char_height
-        screen = self.backend.screen
+        return (
+            is_fg_same
+            and is_bg_same
+            and not is_two_width
+            and not pre_is_selection
+            and pre_is_selection == is_selection
+            and pre_char.reverse == char.reverse
+            and pre_char.bold == char.bold
+            and pre_char.italics == char.italics
+            and pre_char.underscore == char.underscore
+            and pre_char.strikethrough == char.strikethrough
+        )
 
-        clear_rect = QRectF(0, start_y, self.width(), self.char_height)
+    def clear_line(self, painter: QPainter, y: int, height: int):
+        clear_rect = QRectF(0, y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
-        line = screen.get_line(y)
+    def paint_text_of_line(self, painter: QPainter, row: int):
+        if row >= self.rows:
+            return
 
-        pre_char = pyte.screens.Char("")
-        selection = screen.get_selection(y)
-        pre_in_selection = 0 in selection
-        is_two_width = False
-        real_is_two_width = False
+        x = 0
+        y = row * self.char_height
+
+        screen = self.backend.screen
+        line = screen.get_line(row)
+
+        selection = screen.get_selection(row)
+        is_two_width = True
         same_text = ""
 
+        pre_char = pyte.screens.Char("")
+        pre_is_selection = 0 in selection
+        pre_is_two_width = False
+
+        self.clear_line(painter, y, self.char_height)
+
         for column in range(screen.columns + 1):
-            if column == screen.columns:
-                char = None
-            else:
-                char = line[column]
+            char = line[column] if column < screen.columns else None
 
             if char and char.data == "":
                 continue
 
-            is_two_width = char and line[column + 1].data == ""
-
             if char:
-                in_selection = column in selection
+                is_selection = column in selection
+                is_two_width = line[column + 1].data == ""
 
-            if (
-                char
-                and self.check_draw_together(pre_char, char)
-                and not is_two_width
-                and not real_is_two_width
-                and pre_in_selection == in_selection
-            ):
-                same_text += char.data
-                continue
+                if self.can_draw_together(
+                    pre_char,
+                    char,
+                    is_selection,
+                    pre_is_selection,
+                    is_two_width,
+                    pre_is_two_width,
+                ):
+                    same_text += char.data
+                    continue
 
-            text_width = self.get_text_width(same_text, real_is_two_width)
+            text_width = self.get_text_width(same_text, pre_is_two_width)
 
             self.draw_text(
                 painter,
                 same_text,
                 text_width,
                 pre_char,
-                start_x,
-                start_y,
-                real_is_two_width,
-                pre_in_selection,
+                x,
+                y,
+                pre_is_two_width,
+                pre_is_selection,
             )
 
-            start_x += text_width
-            real_is_two_width = is_two_width
+            x += text_width
+            pre_is_two_width = is_two_width
 
             if char:
                 pre_char = char
                 same_text = char.data
-                pre_in_selection = in_selection
+                pre_is_selection = is_selection
 
-        if y == self.rows - 1:
-            start_y += self.char_height
-            height = self.height() - start_y
-            clear_rect = QRectF(0, start_y, self.width(), height)
-            painter.fillRect(clear_rect, self.get_brush("default"))
+        if row == self.rows - 1:
+            y += self.char_height
+            height = self.height() - y
+            self.clear_line(painter, y, height)
 
     def paint_cursor(self, painter: QPainter):
         screen = self.backend.screen
@@ -368,11 +378,9 @@ class FrontendWidget(QWidget):
         if cursor.hidden or (screen.in_history and not screen.cursor_move_mode):
             return
 
-        self.cursor.x, self.cursor.y, self.cursor.hidden = (
-            cursor.x,
-            cursor.y,
-            cursor.hidden,
-        )
+        self.cursor.x = cursor.x
+        self.cursor.y = cursor.y
+        self.cursor.hidden = cursor.hidden
 
         line = screen.get_line(cursor.y)
         cursor_x = 0
@@ -504,9 +512,9 @@ class FrontendWidget(QWidget):
                     line_down_number = x // self.columns
                     x -= line_down_number * self.columns
                     y += line_down_number
-                markers[y].update({x: key})
-                count += 1
-        self.link_markers_position = list(markers.keys())
+                    markers[y].update({x: key})
+                    count += 1
+                    self.link_markers_position = list(markers.keys())
 
         self.render_marker(markers)
 
@@ -516,14 +524,14 @@ class FrontendWidget(QWidget):
         # Doing so because can't direct update screen dirty
         painter = QPainter(self.pixmap)
         for y in self.link_markers_position:
-            self.paint_line_text(painter, y)
-        self.update()
+            self.paint_text_of_line(painter, y)
+            self.update()
 
     def _open_link(self, marker: str):
         link = self.link_markers.get(marker.upper())
         if link:
             open_url_in_new_tab(link)
-        self.cleanup_link_markers()
+            self.cleanup_link_markers()
 
     def get_cursor_absolute_position(self) -> (int, int):
         pos = self.mapFromGlobal(QCursor.pos())
@@ -657,8 +665,8 @@ class FrontendWidget(QWidget):
             column, row = self.pixel_to_position(x, y)
             if y < 0:
                 row = -1
-            screen.move_to_position(column, row)
-            screen.absolute_virtual_cursor_y = screen.base + row
+                screen.move_to_position(column, row)
+                screen.absolute_virtual_cursor_y = screen.base + row
 
             if self.first_mouse_move:
                 self.first_mouse_move = False
