@@ -603,7 +603,11 @@ class FrontendWidget(QWidget):
 
         if (text or s) and modifier == Qt.KeyboardModifier.ControlModifier:
             # 'a' => '\x01', 'A' => '\x01'
-            text = chr(ord(text.lower()) - 96)
+            try:
+                text = chr(ord(text.lower()) - 96)
+            except:
+                pass
+
             send(text)
             return
         if (text or s) and modifier == Qt.KeyboardModifier.AltModifier:
