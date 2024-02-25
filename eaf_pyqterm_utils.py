@@ -20,8 +20,8 @@ def generate_random_key(count: int, letters: str) -> list[str]:
 import re
 
 LINK_PATTERN = re.compile(r"(https?://(?:[\w-]+\.)+[\w-]+(?:/[\w/?%&=-]*)?)")
-WORD_PATTERN = re.compile("[\s,\._()=*\"'\[\]/-]")
-SYMBOL_PATTERN = re.compile("\s")
+WORD_PATTERN = re.compile(r"[\s,\._()=*\"'\[\]/-]")
+SYMBOL_PATTERN = re.compile(r"\s")
 
 
 def match_link(text: str) -> (dict[int, str], int):
