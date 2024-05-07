@@ -102,7 +102,7 @@ class FrontendWidget(QWidget):
 
         self.fm = QFontMetricsF(self.font)
         self.char_height = self.fm.height()
-        self.char_width = self.get_text_width("W")
+        self.char_width = self.fm.horizontalAdvance("W")
         self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
         self.underline_pos = self.fm.underlinePos()
 
@@ -226,7 +226,6 @@ class FrontendWidget(QWidget):
         pre_char: pyte.screens.Char,
         start_x: float,
         start_y: float,
-        is_two_width: bool,
         is_selection: bool,
     ):
         fg = "white" if pre_char.fg == "default" or is_selection else pre_char.fg
@@ -282,7 +281,6 @@ class FrontendWidget(QWidget):
         is_selection: bool,
         pre_is_selection: bool,
         is_two_width: bool,
-        pre_is_two_width: bool,
     ) -> bool:
         is_fg_same = True if pre_is_selection else pre_char.fg == char.fg
         is_bg_same = True if pre_is_selection else pre_char.bg == char.bg
@@ -300,7 +298,7 @@ class FrontendWidget(QWidget):
             and pre_char.strikethrough == char.strikethrough
         )
 
-    def clear_line(self, painter: QPainter, y: int, height: int):
+    def clear_line(self, painter: QPainter, y: int):
         clear_rect = QRectF(0, y, self.width(), self.char_height)
         painter.fillRect(clear_rect, self.get_brush("default"))
 
@@ -322,7 +320,7 @@ class FrontendWidget(QWidget):
         pre_is_selection = 0 in selection
         pre_is_two_width = False
 
-        self.clear_line(painter, y, self.char_height)
+        self.clear_line(painter, y)
 
         for column in range(screen.columns + 1):
             char = line[column] if column < screen.columns else None
@@ -340,7 +338,6 @@ class FrontendWidget(QWidget):
                     is_selection,
                     pre_is_selection,
                     is_two_width,
-                    pre_is_two_width,
                 ):
                     same_text += char.data
                     continue
@@ -354,7 +351,6 @@ class FrontendWidget(QWidget):
                 pre_char,
                 x,
                 y,
-                pre_is_two_width,
                 pre_is_selection,
             )
 
@@ -369,7 +365,7 @@ class FrontendWidget(QWidget):
         if row == self.rows - 1:
             y += self.char_height
             height = self.height() - y
-            self.clear_line(painter, y, height)
+            self.clear_line(painter, y)
 
     def paint_cursor(self, painter: QPainter):
         screen = self.backend.screen
@@ -425,7 +421,7 @@ class FrontendWidget(QWidget):
         if is_two_width:
             return self.char_width * 2
         else:
-            return self.fm.horizontalAdvance(text)
+            return self.char_width * len(text)
 
     def focusProxy(self):
         return self
