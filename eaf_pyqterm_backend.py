@@ -107,11 +107,6 @@ class Backend:
         self.thread = threading.Thread(target=self.read)
         self.thread.start()
 
-    @property
-    def is_in_history(self):
-        return bool(self.screen.history.bottom)
-
-    @property
     def title(self):
         return self.screen.title or self.buffer_screen.title
 

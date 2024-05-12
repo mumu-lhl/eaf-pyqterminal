@@ -5,14 +5,11 @@ import math
 import time
 from enum import Enum
 
-import eaf_pyqterm_backend as backend
 import pyte
 from core.buffer import interactive
 from core.utils import *
-from eaf_pyqterm_utils import generate_random_key, match_link
 from PyQt6.QtCore import QEvent, QLineF, QRectF, Qt
 from PyQt6.QtGui import (
-    QBrush,
     QColor,
     QCursor,
     QFont,
@@ -20,12 +17,14 @@ from PyQt6.QtGui import (
     QFontMetricsF,
     QKeyEvent,
     QPainter,
-    QPen,
     QPixmap,
     QWheelEvent,
 )
 from PyQt6.QtWidgets import QWidget
 from pyte.screens import Cursor
+
+import eaf_pyqterm_backend as backend
+from eaf_pyqterm_utils import generate_random_key, match_link
 
 CSI_C0 = pyte.control.CSI_C0
 KEY_DICT = {
@@ -50,10 +49,8 @@ StyleType = Enum("StyleType", ("Bold", "Italics", "Underline", "StrikeOut"))
 
 
 class FrontendWidget(QWidget):
-    brush_cache = {}
-    color_cache = {}
+    color_map = {}
     fonts = {}
-    pen_cache = {}
 
     def __init__(self, argv, start_directory):
         super().__init__()
@@ -98,13 +95,15 @@ class FrontendWidget(QWidget):
 
         self.cursor = Cursor(0, 0)
 
-        self.font = self.get_font()
-
-        self.fm = QFontMetricsF(self.font)
-        self.char_height = self.fm.height()
-        self.char_width = self.fm.horizontalAdvance("W")
+        font = QFont()
+        font.setFamily(self.font_family)
+        font.setPixelSize(self.font_size)
+        fm = QFontMetricsF(font)
+        self.font = font
+        self.char_height = fm.height()
+        self.char_width = fm.horizontalAdvance("W")
         self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
-        self.underline_pos = self.fm.underlinePos()
+        self.underline_pos = fm.underlinePos()
 
         self.backend = backend.Backend(self.columns, self.rows, argv, start_directory)
 
@@ -122,24 +121,16 @@ class FrontendWidget(QWidget):
     def init_color_schema(self):
         color_schema = get_emacs_func_result("eaf-pyqterminal-get-color-schema", [])
 
-        for name, color_name in color_schema:
-            if name == "cursor":
-                self.cursor_color = color_name
-                continue
-            color = QColor(color_name)
-            self.color_cache[name] = color
+        for name, color in color_schema:
+            self.color_map[name] = color
 
         theme_mode = get_emacs_theme_mode()
         theme_background_color = get_emacs_theme_background()
         if theme_mode == "dark":
-            self.color_cache["black"] = QColor(theme_background_color)
-            self.color_cache["white"] = QColor("#FFFFFF")
+            self.color_map["white"] = "#FFFFFF"
         else:
-            self.color_cache["black"] = QColor(theme_background_color)
-            self.color_cache["white"] = QColor("#000000")
-
-        self.pen_cache["default"] = QPen(self.color_cache["white"])
-        self.brush_cache["default"] = QBrush(self.color_cache["black"])
+            self.color_map["white"] = "#000000"
+        self.color_map["black"] = theme_background_color
 
     def init_pixmap(self):
         self.pixmap = QPixmap(
@@ -166,43 +157,7 @@ class FrontendWidget(QWidget):
 
         return font
 
-    def get_color(self, color_name: str, alpha: int = -1) -> QColor | str:
-        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
-
-        color = self.color_cache.get(alpha_color_name)
-
-        if not color:
-            color = QColor(color_name if color_name[0] == "#" else "#" + color_name)
-            if alpha >= 0:
-                color.setAlpha(alpha)
-
-            self.color_cache[alpha_color_name] = color
-
-        return color
-
-    def get_pen(self, color_name: str) -> QPen:
-        pen = self.pen_cache.get(color_name)
-
-        if not pen:
-            color = self.get_color(color_name)
-            pen = QPen(color)
-            self.pen_cache[color_name] = pen
-
-        return pen
-
-    def get_brush(self, color_name: str, alpha: int = -1) -> QBrush:
-        alpha_color_name = color_name + str(alpha) if alpha >= 0 else color_name
-
-        brush = self.brush_cache.get(alpha_color_name)
-
-        if not brush:
-            color = self.get_color(color_name, alpha)
-            brush = QBrush(color)
-            self.brush_cache[alpha_color_name] = brush
-
-        return brush
-
-    def pixel_to_position(self, x: int, y: int) -> (int, int):
+    def pixel_to_position(self, x: int, y: int) -> tuple[int, int]:
         column = int(x / self.char_width)
         row = int(y / self.char_height)
         return column, row
@@ -214,7 +169,7 @@ class FrontendWidget(QWidget):
         screen.dirty.update([self.cursor.y, screen.get_cursor().y])
 
         # Dirty will change when traversing
-        for _ in range(len(screen.dirty)):
+        while screen.dirty:
             y = screen.dirty.pop()
             self.paint_text_of_line(painter, y)
 
@@ -228,14 +183,21 @@ class FrontendWidget(QWidget):
         start_y: float,
         is_selection: bool,
     ):
-        fg = "white" if pre_char.fg == "default" or is_selection else pre_char.fg
-        bg = "black" if pre_char.bg == "default" or is_selection else pre_char.bg
+        fg = pre_char.fg
+        bg = pre_char.bg
+        if bg == "default" and text.strip() == "":
+            return
+        if fg == "default":
+            fg = "white"
+        if bg == "default":
+            bg = "black"
 
-        if pre_char.reverse or is_selection:
+        if pre_char.reverse:
             fg, bg = bg, fg
 
-        if text.strip() == "" and bg == "default":
-            return
+        if is_selection:
+            fg = "black"
+            bg = "white"
 
         style = []
         if pre_char.bold:
@@ -244,12 +206,10 @@ class FrontendWidget(QWidget):
             style.append(StyleType.Italics)
 
         rect = QRectF(start_x, start_y, text_width, self.char_height)
-
-        if bg != "default":
-            painter.fillRect(rect, self.get_brush(bg))
+        painter.fillRect(rect, QColor(self.color_map.get(bg) or "#" + bg))
 
         painter.setFont(self.get_font(style))
-        painter.setPen(self.get_pen(fg))
+        painter.setPen(QColor(self.color_map.get(fg) or "#" + fg))
         painter.drawText(rect, align, text)
 
         if pre_char.underscore:
@@ -298,9 +258,9 @@ class FrontendWidget(QWidget):
             and pre_char.strikethrough == char.strikethrough
         )
 
-    def clear_line(self, painter: QPainter, y: int):
+    def clear_line(self, painter: QPainter, y: float):
         clear_rect = QRectF(0, y, self.width(), self.char_height)
-        painter.fillRect(clear_rect, self.get_brush("default"))
+        painter.fillRect(clear_rect, QColor(self.color_map["black"]))
 
     def paint_text_of_line(self, painter: QPainter, row: int):
         if row >= self.rows:
@@ -364,7 +324,6 @@ class FrontendWidget(QWidget):
 
         if row == self.rows - 1:
             y += self.char_height
-            height = self.height() - y
             self.clear_line(painter, y)
 
     def paint_cursor(self, painter: QPainter):
@@ -404,9 +363,13 @@ class FrontendWidget(QWidget):
         elif self.cursor_type == "hbar":
             cursor_width = self.cursor_size
 
-        brush = self.get_brush(self.cursor_color, cursor_alpha)
         if screen.marker and not screen.mouse:
-            brush = self.get_brush("yellow", cursor_alpha)
+            brush = self.color_map["yellow"]
+        else:
+            brush = self.color_map["cursor"]
+        brush = QColor(brush)
+        if cursor_alpha != -1:
+            brush.setAlpha(cursor_alpha)
 
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(brush)
@@ -442,7 +405,7 @@ class FrontendWidget(QWidget):
 
     def render_marker(self, markers: dict[str, dict[str, str]]):
         painter = QPainter(self.pixmap)
-        painter.setPen(self.get_pen("black"))
+        painter.setPen(QColor(self.color_map["black"]))
         for y, markers in markers.items():
             line = self.backend.screen.get_line(y)
             x_position, y_position = 0, y * self.char_height
@@ -462,7 +425,7 @@ class FrontendWidget(QWidget):
                         self.get_text_width(marker),
                         self.char_height,
                     )
-                    painter.fillRect(rect, self.get_brush("yellow"))
+                    painter.fillRect(rect, QColor(self.color_map["yellow"]))
                     painter.drawText(rect, align, marker)
                     self.update()
 
@@ -529,7 +492,7 @@ class FrontendWidget(QWidget):
             open_url_in_new_tab(link)
             self.cleanup_link_markers()
 
-    def get_cursor_absolute_position(self) -> (int, int):
+    def get_cursor_absolute_position(self) -> tuple[int, int]:
         pos = self.mapFromGlobal(QCursor.pos())
         return pos.x(), pos.y()
 
@@ -574,7 +537,7 @@ class FrontendWidget(QWidget):
 
         self.update()
 
-        title = self.backend.title
+        title = self.backend.title()
         if title != self.title:
             self.title = title
             self.change_title(f"Term [{title}]")

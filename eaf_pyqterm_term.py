@@ -49,12 +49,10 @@ class TerminalScreen(HistoryScreen):
     def absolute_y(self, line_num: int) -> int:
         return self.base + line_num
 
-    @property
-    def at_top(self) -> int:
+    def at_top(self) -> bool:
         return self.base == 0 and self.virtual_cursor.y == 0
 
-    @property
-    def at_bottom(self) -> int:
+    def at_bottom(self) -> bool:
         return (
             not self.in_history
             and self.virtual_cursor.y + 1 == self.get_last_blank_line()
@@ -71,30 +69,37 @@ class TerminalScreen(HistoryScreen):
         if self.is_buffer:
             return
 
-        if self.base != 0:
+        base = self.base
+        old_base = base
+
+        if base != 0:
             self.in_history = True
 
-        base = self.base - line_num
-        old_base = self.base
-        self.base = 0 if base < 0 else base
+        base = base - line_num
+        if base < 0:
+            base = 0
+        self.base = base
 
-        if self.base != old_base:
+        if base != old_base:
             self.dirty.update(range(self.lines))
 
     def scroll_down(self, line_num: int) -> None:
         if self.is_buffer:
             return
 
-        base = self.base + line_num
-        old_base = self.base
+        base = self.base
+        old_base = base
 
-        if base >= len(self.history.top):
-            base = len(self.history.top)
+        base = base + line_num
+
+        history = self.history
+        if base >= len(history.top):
+            base = len(history.top)
             self.in_history = False
 
         self.base = base
 
-        if self.base != old_base:
+        if base != old_base:
             self.dirty.update(range(self.lines))
 
     def scroll_to_begin(self) -> None:
@@ -292,7 +297,7 @@ class TerminalScreen(HistoryScreen):
         if line[x].data == "":
             x += 1
 
-        if x > end_x and not self.at_bottom:
+        if x > end_x and not self.at_bottom():
             self.virtual_cursor.x = 0
             self.max_virtual_cursor_x = 0
             self.next_line()
@@ -308,7 +313,7 @@ class TerminalScreen(HistoryScreen):
         if line[x].data == "":
             x -= 1
 
-        if x < 0 and not self.at_top:
+        if x < 0 and not self.at_top():
             self.virtual_cursor.x = end_x
             self.max_virtual_cursor_x = end_x
             self.previous_line()
@@ -342,7 +347,7 @@ class TerminalScreen(HistoryScreen):
 
         self.move_beginning_of_line()
 
-        if x is None and self.at_bottom:
+        if x is None and self.at_bottom():
             self.move_end_of_line()
             return
 
@@ -358,7 +363,7 @@ class TerminalScreen(HistoryScreen):
         )
         x = self.find(self.virtual_cursor.y, get_regexp(thing), start, True)
 
-        if x is None and self.at_top:
+        if x is None and self.at_top():
             self.move_beginning_of_line()
             return
 
