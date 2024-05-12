@@ -5,10 +5,10 @@ import re
 import threading
 import time
 
-import pyte_
+import pyte
 from core.utils import *
 from PyQt6.QtWidgets import QApplication
-from pyte_.screens import Cursor, HistoryScreen
+from pyte.screens import Cursor, HistoryScreen
 from pyte.streams import ByteStream
 from eaf_pyqterm_utils import get_regexp
 
@@ -40,9 +40,9 @@ class TerminalScreen(HistoryScreen):
         self.first_move = False
         self.max_virtual_cursor_x = 0
         self.absolute_virtual_cursor_y = 0
-        self.virtual_cursor = Cursor(0, 0, self.default_char)
-        self.old_cursor = Cursor(0, 0, self.default_char)
-        self.old_marker_cursor = Cursor(0, 0, self.default_char)
+        self.virtual_cursor = Cursor(0, 0)
+        self.old_cursor = Cursor(0, 0)
+        self.old_marker_cursor = Cursor(0, 0)
 
         self.mouse = False
 
@@ -146,7 +146,7 @@ class TerminalScreen(HistoryScreen):
         else:
             return self.buffer[history_line_num - top_length]
 
-    def get_cursor(self) -> pyte_.screens.Cursor:
+    def get_cursor(self) -> pyte.screens.Cursor:
         if self.cursor_move_mode:
             if not self.mouse:
                 return self.virtual_cursor

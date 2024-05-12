@@ -21,7 +21,7 @@ from PyQt6.QtGui import (
     QWheelEvent,
 )
 from PyQt6.QtWidgets import QWidget
-from pyte_.screens import Cursor, Char, Screen
+from pyte.screens import Cursor
 
 import eaf_pyqterm_backend as backend
 from eaf_pyqterm_utils import generate_random_key, match_link
@@ -93,7 +93,7 @@ class FrontendWidget(QWidget):
         self.last_mouse_click_position = (0, 0)
         self.first_mouse_move = True
 
-        self.cursor = Cursor(0, 0, Screen.default_char)
+        self.cursor = Cursor(0, 0)
 
         font = QFont()
         font.setFamily(self.font_family)
@@ -178,7 +178,7 @@ class FrontendWidget(QWidget):
         painter: QPainter,
         text: str,
         text_width: float,
-        pre_char: Char,
+        pre_char: pyte.screens.Char,
         start_x: float,
         start_y: float,
         is_selection: bool,
@@ -236,8 +236,8 @@ class FrontendWidget(QWidget):
 
     def can_draw_together(
         self,
-        pre_char: Char,
-        char: Char,
+        pre_char: pyte.screens.Char,
+        char: pyte.screens.Char,
         is_selection: bool,
         pre_is_selection: bool,
         is_two_width: bool,
@@ -276,7 +276,7 @@ class FrontendWidget(QWidget):
         is_two_width = True
         same_text = ""
 
-        pre_char = screen.default_char
+        pre_char = pyte.screens.Char("")
         pre_is_selection = 0 in selection
         pre_is_two_width = False
 
@@ -571,7 +571,7 @@ class FrontendWidget(QWidget):
             return
         if (text or s) and modifier == Qt.KeyboardModifier.AltModifier:
             text = s if s else text
-            send(pyte_.control.ESC + text)
+            send(pyte.control.ESC + text)
             return
 
         if text and not s:
