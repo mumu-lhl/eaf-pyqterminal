@@ -266,8 +266,11 @@ class FrontendWidget(QWidget):
         if row >= self.rows:
             return
 
+        char_height = self.char_height
+        char_width = self.char_width
+
         x = 0
-        y = row * self.char_height
+        y = row * char_height
 
         screen = self.backend.screen
         line = screen.get_line(row)
@@ -278,17 +281,17 @@ class FrontendWidget(QWidget):
 
         pre_char = pyte.screens.Char("")
         pre_is_selection = 0 in selection
-        pre_is_two_width = False
 
         self.clear_line(painter, y)
 
+        text_width = 0
         for column in range(screen.columns + 1):
-            char = line[column] if column < screen.columns else None
+            char = line[column]
+            text_width += char_width
+            if column < screen.columns:
+                if char.data == "":
+                    continue
 
-            if char and char.data == "":
-                continue
-
-            if char:
                 is_selection = column in selection
                 is_two_width = line[column + 1].data == ""
 
@@ -302,8 +305,6 @@ class FrontendWidget(QWidget):
                     same_text += char.data
                     continue
 
-            text_width = self.get_text_width(same_text, pre_is_two_width)
-
             self.draw_text(
                 painter,
                 same_text,
@@ -313,17 +314,16 @@ class FrontendWidget(QWidget):
                 y,
                 pre_is_selection,
             )
+            if column != 0:
+                x += text_width
+            text_width = 0
 
-            x += text_width
-            pre_is_two_width = is_two_width
-
-            if char:
-                pre_char = char
-                same_text = char.data
-                pre_is_selection = is_selection
+            pre_char = char
+            same_text = char.data
+            pre_is_selection = is_selection
 
         if row == self.rows - 1:
-            y += self.char_height
+            y += char_height
             self.clear_line(painter, y)
 
     def paint_cursor(self, painter: QPainter):
@@ -340,11 +340,8 @@ class FrontendWidget(QWidget):
         line = screen.get_line(cursor.y)
         cursor_x = 0
         cursor_y = cursor.y * self.char_height
-        for column in range(cursor.x):
-            char = line[column].data
-            if char == "":
-                continue
-            cursor_x += self.get_text_width(char, line[column + 1].data == "")
+        char_width = self.char_width
+        cursor_x += char_width * cursor.x
 
         cursor_height = self.char_height
         cursor_alpha = self.cursor_alpha
@@ -532,10 +529,10 @@ class FrontendWidget(QWidget):
             painter = QPainter(self.pixmap)
             screen.cursor_dirty = False
             self.paint_cursor(painter)
+            self.update()
         else:
             self.paint_pixmap()
-
-        self.update()
+            self.update()
 
         title = self.backend.title()
         if title != self.title:
