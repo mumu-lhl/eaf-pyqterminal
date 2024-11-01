@@ -77,7 +77,7 @@ class Pty:
         s = struct.pack("HHHH", height, width, 0, 0)
         try:
             fcntl.ioctl(self.p_fd, TIOCSWINSZ, s)
-        except:
+        except:  # noqa: E722
             pass
 
     def _resize_winpty(self, width, height):
@@ -87,7 +87,7 @@ class Pty:
         pid = self.pty.pid if platform == "Windows" else self.p_pid
         try:
             return psutil.Process(pid).cwd()
-        except:
+        except:  # noqa: E722
             pass
 
 
@@ -131,7 +131,7 @@ class Backend:
 
         try:
             self.stream.feed(data)
-        except:
+        except:  # noqa: E722
             # Avoid problem with vim
             pass
 
@@ -157,7 +157,7 @@ class Backend:
     def send(self, data: str):
         try:
             self.pty.write(data.encode())
-        except:
+        except:  # noqa: E722
             self.close()
 
     def close(self):
