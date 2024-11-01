@@ -7,7 +7,7 @@ import threading
 
 import psutil
 
-if platform == "Windows":
+if platform.system() == "Windows":
     from winpty import PtyProcess as pty
 else:
     import fcntl
