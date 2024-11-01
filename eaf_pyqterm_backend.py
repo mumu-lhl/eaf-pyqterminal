@@ -7,7 +7,7 @@ import threading
 
 import psutil
 
-if platform == "Windows":
+if platform.system() == "Windows":
     from winpty import PtyProcess as pty
 else:
     import fcntl
@@ -146,13 +146,22 @@ class Backend:
         self.screen.dirty.update(range(self.screen.lines))
 
     def read(self):
-        while True:
-            try:
-                data = self.pty.read()
-                self.write_to_screen(data)
-            except (OSError, IOError):
-                self.close()
-                break
+        if platform.system() == "Windows":
+            while True:
+                try:
+                    data = self.pty.read().encode()
+                    self.write_to_screen(data)
+                except (OSError, IOError):
+                    self.close()
+                    break
+        else:
+            while True:
+                try:
+                    data = self.pty.read()
+                    self.write_to_screen(data)
+                except (OSError, IOError):
+                    self.close()
+                    break
 
     def send(self, data: str):
         try:
