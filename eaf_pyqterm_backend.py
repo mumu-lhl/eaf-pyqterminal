@@ -31,7 +31,7 @@ class Pty:
             }
         )
 
-        if platform == "Windows":
+        if platform.system() == "Windows":
             self._spawn_winpty(env, argv, start_directory)
         else:
             self._spawn_pty(env, argv, start_directory)
@@ -48,25 +48,25 @@ class Pty:
 
     def _spawn_winpty(self, env, argv, start_directory):
         self.pty = pty.spawn(
-            list(argv[0]) + argv,
+            argv,
             start_directory,
             env,
-            (env["COLUMNS"], env["LINES"]),
+            (int(env["COLUMNS"]), int(env["LINES"])),
         )
 
     def read(self):
         return self.pty.read(65536)
 
     def write(self, data):
-        self.pty.write(data)
+        self.pty.write(data.decode())
 
     def close(self):
         self.pty.close()
-        if platform != "Windows":
+        if platform.system() != "Windows":
             os.kill(self.p_pid, signal.SIGTERM)
 
     def resize(self, width, height):
-        if platform == "Windows":
+        if platform.system() == "Windows":
             self._resize_winpty(width, height)
         else:
             self._resize_pty(width, height)
@@ -81,10 +81,10 @@ class Pty:
             pass
 
     def _resize_winpty(self, width, height):
-        self.pty.set_size(width, height)
+        self.pty.setwinsize(width, height)
 
     def getcwd(self):
-        pid = self.pty.pid if platform == "Windows" else self.p_pid
+        pid = self.pty.pid if platform.system() == "Windows" else self.p_pid
         try:
             return psutil.Process(pid).cwd()
         except:  # noqa: E722
@@ -172,3 +172,4 @@ class Backend:
     def close(self):
         self.pty.close()
         self.close_buffer()
+
