@@ -58,7 +58,10 @@ class Pty:
         return self.pty.read(65536)
 
     def write(self, data):
-        self.pty.write(data.decode())
+        if platform.system() == "Windows":
+            self.pty.write(data.decode())
+        else:
+            self.pty.write(data)
 
     def close(self):
         self.pty.close()
