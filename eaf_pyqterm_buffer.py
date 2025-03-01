@@ -6,6 +6,7 @@ import os
 import shlex
 import sys
 
+from core.utils import *
 from core.buffer import Buffer
 
 sys.path.append(os.path.dirname(__file__))
@@ -20,17 +21,25 @@ class AppBuffer(Buffer):
         arguments_dict = json.loads(arguments)
         argv = shlex.split(arguments_dict["command"])
         start_directory = arguments_dict["directory"]
-        term = FrontendWidget(argv, start_directory)
+        self.term = FrontendWidget(argv, start_directory)
 
-        term.buffer_id = buffer_id
-        term.change_title = self.change_title
-        term.backend.close_buffer = self.close_buffer
-        term.send_input_message = self.send_input_message
+        self.term.buffer_id = buffer_id
+        self.term.change_title = self.change_title
+        self.term.backend.close_buffer = self.close_buffer
+        self.term.send_input_message = self.send_input_message
 
-        self.resize_view = term.resize_view
-        self.fetch_marker_callback = term.fetch_marker_callback
-        self.handle_input_response = term.handle_input_response
-        self.cancel_input_response = term.cancel_input_response
+        self.resize_view = self.term.resize_view
+        self.fetch_marker_callback = self.term.fetch_marker_callback
+        self.handle_input_response = self.term.handle_input_response
+        self.cancel_input_response = self.term.cancel_input_response
 
-        self.add_widget(term)
-        self.build_all_methods(term)
+        self.add_widget(self.term)
+        self.build_all_methods(self.term)
+
+    @interactive
+    def update_theme(self):
+        super().update_theme()
+        
+        self.term.init_color_schema()
+        self.term.resize_view()
+        self.term.update()
