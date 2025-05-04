@@ -102,7 +102,8 @@ class FrontendWidget(QWidget):
         self.font = font
         self.char_height = fm.height()
         self.char_width = fm.horizontalAdvance("W")
-        self.columns, self.rows = self.pixel_to_position(self.width(), self.height())
+        screen = QApplication.instance().primaryScreen()    # type: ignore
+        self.columns, self.rows = self.pixel_to_position(screen.size().width(), screen.size().height())
         self.underline_pos = fm.underlinePos()
 
         self.backend = backend.Backend(self.columns, self.rows, argv, start_directory)
