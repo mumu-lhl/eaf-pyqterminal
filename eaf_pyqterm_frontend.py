@@ -289,9 +289,6 @@ class FrontendWidget(QWidget):
         for column in range(screen.columns + 1):
             char = line[column]
 
-            # Don't draw char if it is fish control char.
-            is_fish_control_char = char.data.strip() != '' and char.bold and char.underscore
-
             text_width += char_width
             if column < screen.columns:
                 if char.data == "":
@@ -307,27 +304,25 @@ class FrontendWidget(QWidget):
                     pre_is_selection,
                     is_two_width,
                 ):
-                    if not is_fish_control_char:
-                        same_text += char.data
-                        continue
+                    same_text += char.data
+                    continue
 
-            if not is_fish_control_char:
-                self.draw_text(
-                    painter,
-                    same_text,
-                    text_width,
-                    pre_char,
-                    x,
-                    y,
-                    pre_is_selection,
-                )
-                if column != 0:
-                    x += text_width
-                text_width = 0
+            self.draw_text(
+                painter,
+                same_text,
+                text_width,
+                pre_char,
+                x,
+                y,
+                pre_is_selection,
+            )
+            if column != 0:
+                x += text_width
+            text_width = 0
 
-                pre_char = char
-                same_text = char.data
-                pre_is_selection = is_selection
+            pre_char = char
+            same_text = char.data
+            pre_is_selection = is_selection
 
         if row == self.rows - 1:
             y += char_height
