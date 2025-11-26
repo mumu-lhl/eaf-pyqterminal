@@ -84,7 +84,7 @@ class Pty:
             pass
 
     def _resize_winpty(self, width, height):
-        self.pty.setwinsize(width, height)
+        self.pty.setwinsize(cols=width, rows=height)
 
     def getcwd(self):
         pid = self.pty.pid if platform.system() == "Windows" else self.p_pid
