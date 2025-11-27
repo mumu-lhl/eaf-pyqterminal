@@ -51,7 +51,7 @@ class Pty:
             argv,
             start_directory,
             env,
-            (int(env["COLUMNS"]), int(env["LINES"])),
+            (int(env["LINES"]), int(env["COLUMNS"])),
         )
 
     def read(self):
