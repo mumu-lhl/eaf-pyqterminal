@@ -51,7 +51,7 @@ class Pty:
             argv,
             start_directory,
             env,
-            (int(env["COLUMNS"]), int(env["LINES"])),
+            (int(env["LINES"]), int(env["COLUMNS"])),
         )
 
     def read(self):
@@ -84,7 +84,7 @@ class Pty:
             pass
 
     def _resize_winpty(self, width, height):
-        self.pty.setwinsize(width, height)
+        self.pty.setwinsize(cols=width, rows=height)
 
     def getcwd(self):
         pid = self.pty.pid if platform.system() == "Windows" else self.p_pid
